@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from '../auth/schemas/user.schema';
 import { CreateUserDto } from './dto/createUserDto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -18,14 +19,16 @@ export class UserService {
             throw new ConflictException('Este email ya se encuentra registrado.');
         }
 
-        //TODO Aquí se haría la encriptación de la contraseña y el guardado en la base de datos.
+        //Encriptación de la contraseña
 
-        const user = new this.userModel({
-            email: userData.email,
-            password: userData.password,
-            firstname: userData.firstname,
-            lastname: userData.lastname
-        })
+ const hashedPassword = await bcrypt.hash(userData.password, 10);
+
+const user = new this.userModel({
+    email: userData.email,
+    password: hashedPassword, // 
+    firstname: userData.firstname,
+    lastname: userData.lastname
+});
 
         try {
             await user.save()

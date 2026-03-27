@@ -1,15 +1,24 @@
 import { Test } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { ConflictException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+
 import { UserService } from './user.service';
 import { User } from '../auth/schemas/user.schema';
 
-// Mocks Globales
+let createdUserData: any;
+
 const mockSave = jest.fn();
-const MockUserModel = jest.fn().mockImplementation(() => ({
-  save: mockSave,
-}));
-MockUserModel.findOne = jest.fn();
+// Mocks Globales
+const MockUserModel = jest.fn().mockImplementation((data) => {
+  createdUserData = data; 
+  return {
+    save: mockSave,
+  };
+});
+
+(MockUserModel as any).findOne = jest.fn();
+
 
 describe('UserService', () => {
   let service: UserService;
@@ -33,25 +42,37 @@ describe('UserService', () => {
   afterEach(() => jest.clearAllMocks());
 
   // Registro sale bien
-  it('debería registrar usuario correctamente', async () => {
-    MockUserModel.findOne.mockResolvedValue(null);
-    mockSave.mockResolvedValue({});
+it('debería registrar usuario correctamente con contraseña encriptada', async () => {
+  (MockUserModel as any).findOne.mockResolvedValue(null);
+  mockSave.mockResolvedValue({});
 
-    const result = await service.register({
-      email: 'juan@test.com',
-      password: '123456',
-      firstname: 'Juan',
-      lastname: 'Pérez',
-    });
+  const passwordPlano = '123456';
 
-    expect(result).toEqual({
-      message: 'Usuario registrado correctamente.'
-    });
+  const result = await service.register({
+    email: 'juan@test.com',
+    password: passwordPlano,
+    firstname: 'Juan',
+    lastname: 'Pérez',
   });
+
+  expect(result).toEqual({
+    message: 'Usuario registrado correctamente.'
+  });
+
+  expect(createdUserData.password).not.toBe(passwordPlano);
+
+  const isMatch = await bcrypt.compare(
+    passwordPlano,
+    createdUserData.password,
+  );
+
+  expect(isMatch).toBe(true);
+});
+
 
   // Email ya existee
   it('debería lanzar ConflictException si email existe', async () => {
-    MockUserModel.findOne.mockResolvedValue({ email: 'juan@test.com' });
+    (MockUserModel as any).findOne.mockResolvedValue({ email: 'juan@test.com' });
 
     await expect(
       service.register({

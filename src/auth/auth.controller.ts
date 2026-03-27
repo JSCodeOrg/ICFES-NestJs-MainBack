@@ -6,7 +6,6 @@ import type { Response } from 'express';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  //falta definir el tipo de rol de ususario y su validacion 
   @Post('login')
   async login(
     @Body() body: { email: string; password: string },

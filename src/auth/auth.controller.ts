@@ -4,6 +4,7 @@ import {
   Body,
   UnauthorizedException,
   Res,
+  HttpCode,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Response } from 'express';
@@ -13,14 +14,15 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
+  @HttpCode(200)
   async login(
     @Body() body: { email: string; password: string },
-    @Res() res: Response,
+    @Res({ passthrough: true }) res: Response,
   ) {
     const user = await this.authService.validateUser(body.email, body.password);
 
     if (!user) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Credenciales incorrectas ¿Quién sos vos?',);
     }
 
     const { access_token } = await this.authService.login({
@@ -35,8 +37,7 @@ export class AuthController {
       maxAge: 1000 * 60 * 60,
     });
 
-    return res.json({
-      Message: 'Entre socio, por la sombrita',
-    });
+    return {
+      message: 'Entre socio, por la sombrita',};
   }
 }

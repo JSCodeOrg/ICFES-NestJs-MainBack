@@ -9,20 +9,20 @@ import { IcfesModule } from './icfes/icfes.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({isGlobal: true}),
+    ConfigModule.forRoot({ isGlobal: true }),
 
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        //uri: configService.get<string>('MONGO_URL') 
-         uri: `${configService.get<string>('MONGO_URL')}/app_db?authSource=admin`, // <-- Unifiqué ambas bases de datos, antes estaba como usuarios, ahora está como app_db y debe tener las conexiones
-                                                                                  // Para poder que funcione deben insertar los datos del ETL en la url de la misma bd
+        //uri: configService.get<string>('MONGO_URL')
+        uri: `${configService.get<string>('MONGO_URL')}/app_db?authSource=admin`, // <-- Unifiqué ambas bases de datos, antes estaba como usuarios, ahora está como app_db y debe tener las conexiones
+        // Para poder que funcione deben insertar los datos del ETL en la url de la misma bd
       }),
     }),
     AuthModule,
     UserModule,
-    IcfesModule
+    IcfesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

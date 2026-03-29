@@ -19,16 +19,16 @@ export class AuthController {
     @Body() body: { email: string; password: string },
     @Res({ passthrough: true }) res: Response,
   ) {
-    const user = await this.authService.validateUser(
-      body.email,
-      body.password,
-    );
+    const user = await this.authService.validateUser(body.email, body.password);
 
     if (!user) {
       throw new UnauthorizedException('Credenciales incorrectas ¿Quién sos vos?',);
     }
 
-    const { access_token } = await this.authService.login(user);
+    const { access_token } = await this.authService.login({
+      email: body.email,
+      password: body.password,
+    });
 
     res.cookie('token', access_token, {
       httpOnly: true,

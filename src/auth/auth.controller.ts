@@ -1,4 +1,11 @@
-import { Controller, Post, Body, UnauthorizedException, Res } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UnauthorizedException,
+  Res,
+  HttpCode,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Response } from 'express';
 
@@ -7,9 +14,10 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
+  @HttpCode(200)
   async login(
     @Body() body: { email: string; password: string },
-    @Res() res: Response,
+    @Res({ passthrough: true }) res: Response,
   ) {
     const user = await this.authService.validateUser(
       body.email,
@@ -17,21 +25,19 @@ export class AuthController {
     );
 
     if (!user) {
-      throw new UnauthorizedException('Credenciales incorrectasm ¿Quien sos vos?');
+      throw new UnauthorizedException('Credenciales incorrectas ¿Quién sos vos?',);
     }
 
     const { access_token } = await this.authService.login(user);
 
     res.cookie('token', access_token, {
-      httpOnly: true,      
-      secure: false,        
-      sameSite: 'lax',      
-      maxAge: 1000 * 60 * 60, 
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60,
     });
 
-    return res.json({
-      Message: 'Entre socio, por la sombrita',
-    });
-
+    return {
+      message: 'Entre socio, por la sombrita',};
   }
 }

@@ -32,6 +32,8 @@ export class UserService {
       password: hashedPassword, //
       firstname: userData.firstname,
       lastname: userData.lastname,
+      role: userData.role || 'consultor',
+      estado: true,
     });
 
     try {

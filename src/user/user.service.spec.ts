@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { ConflictException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 import { UserService } from './user.service';
 import { User } from '../auth/schemas/user.schema';
@@ -56,6 +56,7 @@ describe('UserService', () => {
       password: passwordPlano,
       firstname: 'Juan',
       lastname: 'Pérez',
+      role: 'consultor',
     });
 
     expect(result).toEqual({
@@ -79,6 +80,7 @@ describe('UserService', () => {
         password: '123456',
         firstname: 'Juan',
         lastname: 'Pérez',
+        role: 'consultor',
       }),
     ).rejects.toThrow(ConflictException);
   });

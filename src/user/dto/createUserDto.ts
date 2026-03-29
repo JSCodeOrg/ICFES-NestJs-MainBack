@@ -20,4 +20,9 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty({ message: 'El apellido es obligatorio.' })
   lastname: string;
+
+  @ApiProperty({ example: 'consultor', description: 'Rol del usuario, por defecto es "user".' })
+  @IsString()
+  @IsNotEmpty({ message: 'El rol es obligatorio.' })
+  role: string;
 }

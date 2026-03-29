@@ -33,6 +33,7 @@ describe('UserController', () => {
       password: '12345678',
       firstname: 'Juan',
       lastname: 'Perez',
+      role: 'consultor',
     };
 
     mockUserService.register.mockResolvedValue({ userId: '123' });

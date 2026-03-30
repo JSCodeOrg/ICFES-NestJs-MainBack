@@ -1,10 +1,11 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { IcfesService } from './icfes.service';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { PromedioAnualDto } from './dto/promedioAnualDto';
 
 @Controller('icfes')
 export class IcfesController {
-  constructor(private readonly icfesService: IcfesService) {}
+  constructor(private readonly icfesService: IcfesService) { }
 
   @Get('distribucion-genero')
   @ApiOperation({
@@ -15,5 +16,16 @@ export class IcfesController {
   @ApiResponse({ status: 500, description: 'Ocurrió un error al calcular la distribución por género' })
   distribucionGenero() {
     return this.icfesService.distribucionGenero();
+  }
+
+  @Get('promedio-anual')
+  @ApiOperation({
+    summary: 'Promedio anual del examen por año',
+    description: 'Devuelve el promedio del año al recibir el año'
+  })
+  @ApiResponse({status: 200, description: 'Promedio del año seleccionado'})
+  @ApiResponse({status: 400, description: 'El año solicitado no está contenido dentro del intérvalo 2014-2022'})
+  promedioAnual(@Query() dto: PromedioAnualDto) {
+    return this.icfesService.promedioAnual(dto);
   }
 }

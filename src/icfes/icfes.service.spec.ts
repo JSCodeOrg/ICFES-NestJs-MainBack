@@ -43,12 +43,65 @@ describe('IcfesService', () => {
     expect(service).toBeDefined();
   });
 
-  it('debería retornar correctamente la distribución por género', async () => {
-    mockResultadoModel.aggregate.mockResolvedValue(distributionData);
+  describe('distribucionGenero', () => {
+    it('debería retornar correctamente la distribución por género', async () => {
+      mockResultadoModel.aggregate.mockResolvedValue(distributionData);
 
-    const result = await service.distribucionGenero();
+      const result = await service.distribucionGenero();
 
-    expect(result).toEqual(distributionData);
-    expect(mockResultadoModel.aggregate).toHaveBeenCalled();
+      expect(result).toEqual(distributionData);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalled();
+    });
+  });
+
+  describe('promedioAnual', () => {
+    it('debería retornar correctamente el promedio anual', async () => {
+      const dto = { ano: 2018 };
+
+      const promedioMock = [
+        { promedio: 250.9849904 },
+      ];
+
+      mockResultadoModel.aggregate.mockResolvedValue(promedioMock);
+
+      const result = await service.promedioAnual(dto);
+
+      expect(result).toEqual(promedioMock);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledWith([
+        {
+          $match: { ANIO_EXAMEN: 2018 },
+        },
+        {
+          $group: {
+            _id: null,
+            promedio: { $avg: '$PUNT_GLOBAL' },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            promedio: 1,
+          },
+        },
+      ]);
+    })
+
+    it('debería retornar vacío si no hay datos para el año', async () => {
+      const dto = { ano: 2018 };
+
+      mockResultadoModel.aggregate.mockResolvedValue([]);
+
+      const result = await service.promedioAnual(dto);
+
+      expect(result).toEqual([]);
+    });
+
+    it('debería lanzar error si falla la base de datos', async () => {
+      mockResultadoModel.aggregate.mockRejectedValue(new Error('DB error'));
+
+      await expect(service.promedioAnual({ ano: 2018 }))
+        .rejects
+        .toThrow();
+    });
   });
 });

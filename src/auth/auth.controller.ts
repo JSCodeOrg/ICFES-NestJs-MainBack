@@ -8,12 +8,14 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Response } from 'express';
+import { Public } from './jwt.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
+  @Public()
   @HttpCode(200)
   async login(
     @Body() body: { email: string; password: string },

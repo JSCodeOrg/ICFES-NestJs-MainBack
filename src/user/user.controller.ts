@@ -6,7 +6,7 @@ import { UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { Public } from 'src/auth/jwt.decorator';
+import { Public } from '../auth/jwt.decorator';
 
 @Controller('user')
 export class UserController {

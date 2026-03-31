@@ -16,7 +16,7 @@ import { JwtAuthGuard } from './schemas/jwtauthguard';
     ]),
 
     JwtModule.register({
-      secret: 'SECRET_KEY',
+      secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '1h' },
     }),
   ],

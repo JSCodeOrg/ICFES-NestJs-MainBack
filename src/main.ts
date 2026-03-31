@@ -29,8 +29,6 @@ async function bootstrap() {
     }),
   );
 
-  app.useGlobalGuards(app.get('JwtAuthGuard'));
-
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

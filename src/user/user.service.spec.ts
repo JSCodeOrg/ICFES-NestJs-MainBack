@@ -13,16 +13,21 @@ import { User } from '../auth/schemas/user.schema';
 
 let createdUserData: any;
 
-const mockSave = jest.fn();
+const mockMongo = {
+  mockSave: jest.fn(),
+
+}
 
 const MockUserModel = jest.fn().mockImplementation((data) => {
   createdUserData = data;
   return {
-    save: mockSave,
+    save: mockMongo.mockSave,
   };
 });
 
 (MockUserModel as any).findOne = jest.fn();
+(MockUserModel as any).find = jest.fn();
+(MockUserModel as any).countDocuments = jest.fn();
 
 describe('UserService', () => {
   let service: UserService;
@@ -47,7 +52,7 @@ describe('UserService', () => {
   // Registro sale bien
   it('debería registrar usuario correctamente con contraseña encriptada', async () => {
     (MockUserModel as any).findOne.mockResolvedValue(null);
-    mockSave.mockResolvedValue({});
+    mockMongo.mockSave.mockResolvedValue({});
 
     const passwordPlano = '123456';
 
@@ -84,4 +89,40 @@ describe('UserService', () => {
       }),
     ).rejects.toThrow(ConflictException);
   });
+
+  it('debería retornar usuarios paginados correctamente', async () => {
+    const usersMock = [
+      {
+        email: 'test1@test.com',
+        firstname: 'Test',
+        lastname: 'One',
+      },
+      {
+        email: 'test2@test.com',
+        firstname: 'Test',
+        lastname: 'Two',
+      },
+    ];
+
+    (MockUserModel as any).find.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue(usersMock),
+    });
+
+    (MockUserModel as any).countDocuments.mockResolvedValue(2);
+
+    const result = await service.getAllUsers(1, 10);
+
+    expect(result).toEqual({
+      data: usersMock,
+      meta: {
+        total: 2,
+        page: 1,
+        lastPage: 1,
+      },
+    });
+  });
+
 });

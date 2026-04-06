@@ -1,12 +1,17 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { IcfesService } from './icfes.service';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PromedioAnualDto } from './dto/promedioAnualDto';
+import { RolesGuard } from 'src/auth/roles.guard';
+import { AuthGuard } from '@nestjs/passport/dist/auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 @Controller('icfes')
 export class IcfesController {
   constructor(private readonly icfesService: IcfesService) {}
 
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Get('distribucion-genero')
   @ApiOperation({
     summary: 'Distribución por género del exámen',
@@ -18,6 +23,8 @@ export class IcfesController {
     return this.icfesService.distribucionGenero();
   }
 
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Get('promedio-anual')
   @ApiOperation({
     summary: 'Promedio anual del examen por año',
@@ -28,7 +35,8 @@ export class IcfesController {
   promedioAnual(@Query() dto: PromedioAnualDto) {
     return this.icfesService.promedioAnual(dto);
   }
-
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Get('promedio-nacional')
   @ApiOperation({
     summary: 'Promedio nacional del puntaje global',
@@ -39,7 +47,8 @@ export class IcfesController {
   promedioNacional() {
     return this.icfesService.promedioNacional();
   }
-
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Get('total-registros')
   @ApiOperation({
     summary: 'Total de registros',
@@ -50,7 +59,8 @@ export class IcfesController {
   totalRegistros() {
     return this.icfesService.totalRegistros();
   }
-
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Get('comparacion-colegios')
   @ApiOperation({
     summary: 'Comparación entre colegios oficiales y no oficiales',

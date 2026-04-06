@@ -13,6 +13,16 @@ describe('IcfesController', () => {
     comparacionColegios: jest.fn(),
   };
 
+  jest.mock('src/auth/roles.guard', () => ({
+    RolesGuard: jest.fn().mockImplementation(() => ({
+      canActivate: jest.fn(() => true),
+    })),
+  }));
+
+  jest.mock('@nestjs/passport/dist/auth.guard', () => ({
+    AuthGuard: () => jest.fn(() => true),
+  }));
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [IcfesController],

@@ -47,4 +47,3 @@ export const ResultadosSchema = SchemaFactory.createForClass(Resultado);
 
 ResultadosSchema.index({ ANIO_EXAMEN: 1, PUNT_GLOBAL: 1 });
 ResultadosSchema.index({ COLE_NATURALEZA: 1, PUNT_GLOBAL: 1 });
-ResultadosSchema.index({ ESTU_GENERO: 1 });

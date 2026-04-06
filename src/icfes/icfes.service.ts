@@ -1,7 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Resultado } from './schema/icfes.schema';
 import { Model } from 'mongoose';
+import { PromedioAnualDto } from './dto/promedioAnualDto';
 
 @Injectable()
 export class IcfesService {
@@ -42,6 +43,114 @@ export class IcfesService {
             porcentaje: {
               $multiply: [{ $divide: ['$data.cantidad', '$total'] }, 100],
             },
+          },
+        },
+      ]);
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async promedioAnual(dto: PromedioAnualDto) {
+    try {
+      const anosvalidos = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022];
+      const { ano } = dto;
+
+      if (!anosvalidos.includes(ano)) {
+        throw new BadRequestException('El año solicitado no está contenido dentro del intérvalo 2014-2022');
+      }
+
+      return this.resultadoModel.aggregate([
+        {
+          $match: {
+            ANIO_EXAMEN: ano,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            promedio: { $avg: '$PUNT_GLOBAL' },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            promedio: 1,
+          },
+        },
+      ]);
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+  async promedioNacional() {
+    try {
+      return this.resultadoModel.aggregate([
+        {
+          $match: {
+            PUNT_GLOBAL: { $ne: null },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            promedio: { $avg: '$PUNT_GLOBAL' },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            promedio: 1,
+          },
+        },
+      ]);
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async totalRegistros() {
+    try {
+      return this.resultadoModel.aggregate([
+        {
+          $match: {},
+        },
+        {
+          $count: 'total',
+        },
+      ]);
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async comparacionColegios() {
+    try {
+      return this.resultadoModel.aggregate([
+        {
+          $match: {
+            COLE_NATURALEZA: { $in: ['OFICIAL', 'NO OFICIAL'] },
+            PUNT_GLOBAL: { $ne: null },
+          },
+        },
+        {
+          $group: {
+            _id: '$COLE_NATURALEZA',
+            promedio: { $avg: '$PUNT_GLOBAL' },
+            total: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            tipo_colegio: '$_id',
+            promedio: 1,
+            total: 1,
+          },
+        },
+        {
+          $sort: {
+            tipo_colegio: 1,
           },
         },
       ]);

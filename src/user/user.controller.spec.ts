@@ -119,6 +119,27 @@ describe('UserController', () => {
     });
   });
 
+  // ─── getList users ─────────────────────────────────────────────────────────
+
+  describe('getUsers', () => {
+    it('debería llamar al servicio con los parámetros de paginación', () => {
+      const page = 2;
+      const limit = 5;
+      void controller.getUsers(page, limit);
+
+      expect(mockUserService.getAllUsers).toHaveBeenCalledWith(page, limit);
+    });
+
+    it('debería retornar lo que el servicio devuelve', async () => {
+      const mockResponse = { users: [], total: 0 };
+      mockUserService.getAllUsers.mockResolvedValue(mockResponse);
+
+      const result = await controller.getUsers(2, 5);
+
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
   // ─── getProfile ───────────────────────────────────────────────────────────
 
   describe('getProfile', () => {

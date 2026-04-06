@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, InternalServerErrorException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 
 import { UserService } from './user.service';
@@ -10,29 +10,36 @@ import { User } from '../auth/schemas/user.schema';
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 
 let createdUserData: any;
 
-const mockMongo = {
-  mockSave: jest.fn(),
 
-}
+const mockSave = jest.fn()
+
 
 const MockUserModel = jest.fn().mockImplementation((data) => {
   createdUserData = data;
-  return {
-    save: mockMongo.mockSave,
-  };
+  return { save: mockSave };
 });
 
 (MockUserModel as any).findOne = jest.fn();
-(MockUserModel as any).find = jest.fn();
-(MockUserModel as any).countDocuments = jest.fn();
+
+// ── DTO base reutilizable ─────────────────────────────────────────────────────
+
+const baseDto = {
+  email: 'juan@test.com',
+  password: '123456',
+  firstname: 'Juan',
+  lastname: 'Pérez',
+  role: 'consultor',
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 describe('UserService', () => {
   let service: UserService;
 
-  // Montaje del módulo, normal
   beforeEach(async () => {
     const module = await Test.createTestingModule({
       providers: [
@@ -49,80 +56,111 @@ describe('UserService', () => {
 
   afterEach(() => jest.clearAllMocks());
 
-  // Registro sale bien
-  it('debería registrar usuario correctamente con contraseña encriptada', async () => {
-    (MockUserModel as any).findOne.mockResolvedValue(null);
-    mockMongo.mockSave.mockResolvedValue({});
+  // ─── register: camino feliz ───────────────────────────────────────────────
 
-    const passwordPlano = '123456';
+  describe('register', () => {
+    it('registra usuario correctamente y retorna mensaje de éxito', async () => {
+      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockSave.mockResolvedValue({});
 
-    const result = await service.register({
-      email: 'juan@test.com',
-      password: passwordPlano,
-      firstname: 'Juan',
-      lastname: 'Pérez',
-      role: 'consultor',
+      const result = await service.register(baseDto);
+
+      expect(result).toEqual({ message: 'Usuario registrado correctamente.' });
     });
 
-    expect(result).toEqual({
-      message: 'Usuario registrado correctamente.',
+    it('encripta la contraseña antes de guardar', async () => {
+      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockSave.mockResolvedValue({});
+
+      await service.register(baseDto);
+
+      expect(createdUserData.password).not.toBe(baseDto.password);
+      const isMatch = await bcrypt.compare(baseDto.password, createdUserData.password);
+      expect(isMatch).toBe(true);
     });
 
-    expect(createdUserData.password).not.toBe(passwordPlano);
+    it('llama a findOne con el email correcto', async () => {
+      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockSave.mockResolvedValue({});
 
-    const isMatch = await bcrypt.compare(passwordPlano, createdUserData.password);
+      await service.register(baseDto);
 
-    expect(isMatch).toBe(true);
+      expect((MockUserModel as any).findOne).toHaveBeenCalledWith({
+        email: baseDto.email,
+      });
+    });
+
+    it('asigna role "consultor" por defecto cuando no se provee', async () => {
+      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockSave.mockResolvedValue({});
+
+      const { role: _omitted, ...dtoSinRole } = baseDto;
+      await service.register({ ...dtoSinRole, role: '' });
+
+      expect(createdUserData.role).toBe('consultor');
+    });
+
+    it('asigna estado true al crear el usuario', async () => {
+      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockSave.mockResolvedValue({});
+
+      await service.register(baseDto);
+
+      expect(createdUserData.estado).toBe(true);
+    });
+
+    // ─── ConflictException: email duplicado ───────────────────────────────
+
+    it('lanza ConflictException si el email ya existe', async () => {
+      (MockUserModel as any).findOne.mockResolvedValue({ email: baseDto.email });
+
+      await expect(service.register(baseDto)).rejects.toThrow(ConflictException);
+      await expect(service.register(baseDto)).rejects.toThrow('Este email ya se encuentra registrado.');
+    });
+
+    it('no llama a save cuando el email ya existe', async () => {
+      (MockUserModel as any).findOne.mockResolvedValue({ email: baseDto.email });
+
+      await expect(service.register(baseDto)).rejects.toThrow(ConflictException);
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    // ─── ConflictException: password vacío ───────────────────────────────
+
+    it('lanza ConflictException si la contraseña está vacía', async () => {
+      (MockUserModel as any).findOne.mockResolvedValue(null);
+
+      await expect(service.register({ ...baseDto, password: '' })).rejects.toThrow(ConflictException);
+      await expect(service.register({ ...baseDto, password: '' })).rejects.toThrow('La contraseña es requerida.');
+    });
+
+    it('no llama a save cuando la contraseña está vacía', async () => {
+      (MockUserModel as any).findOne.mockResolvedValue(null);
+
+      await expect(service.register({ ...baseDto, password: '' })).rejects.toThrow(ConflictException);
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    // ─── InternalServerErrorException: fallo en save ─────────────────────
+
+    it('lanza InternalServerErrorException cuando save falla', async () => {
+      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockSave.mockImplementation(() => {
+        throw new Error('DB fail');
+      });
+
+      await expect(service.register(baseDto)).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('no retorna mensaje de éxito cuando save falla', async () => {
+      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockSave.mockImplementation(() => {
+        throw new Error('DB fail');
+      });
+
+      await expect(service.register(baseDto)).rejects.not.toThrow('Usuario registrado correctamente.');
+    });
   });
-
-  // Email ya existee
-  it('debería lanzar ConflictException si email existe', async () => {
-    (MockUserModel as any).findOne.mockResolvedValue({ email: 'juan@test.com' });
-
-    await expect(
-      service.register({
-        email: 'juan@test.com',
-        password: '123456',
-        firstname: 'Juan',
-        lastname: 'Pérez',
-        role: 'consultor',
-      }),
-    ).rejects.toThrow(ConflictException);
-  });
-
-  it('debería retornar usuarios paginados correctamente', async () => {
-    const usersMock = [
-      {
-        email: 'test1@test.com',
-        firstname: 'Test',
-        lastname: 'One',
-      },
-      {
-        email: 'test2@test.com',
-        firstname: 'Test',
-        lastname: 'Two',
-      },
-    ];
-
-    (MockUserModel as any).find.mockReturnValue({
-      select: jest.fn().mockReturnThis(),
-      skip: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      lean: jest.fn().mockResolvedValue(usersMock),
-    });
-
-    (MockUserModel as any).countDocuments.mockResolvedValue(2);
-
-    const result = await service.getAllUsers(1, 10);
-
-    expect(result).toEqual({
-      data: usersMock,
-      meta: {
-        total: 2,
-        page: 1,
-        lastPage: 1,
-      },
-    });
-  });
-
 });

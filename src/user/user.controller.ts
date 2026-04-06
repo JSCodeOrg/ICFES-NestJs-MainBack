@@ -1,6 +1,6 @@
 import { Body, Controller, Post, Get, Query } from '@nestjs/common';
 import { UserService } from './user.service';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/createUserDto';
 import { UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -29,6 +29,7 @@ export class UserController {
 
   @Get('users')
   @ApiOperation({ summary: 'Listado de usuarios con paginación', description: 'Devuelve el listado de usuarios paginados' })
+  @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'Listado de usuarios' })
   @ApiResponse({ status: 500, description: 'Error interno del servidor' })
   @Roles('admin')

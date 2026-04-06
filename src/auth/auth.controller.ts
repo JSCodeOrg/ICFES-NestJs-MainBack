@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import type { Response } from 'express';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { LoginDto } from './dto/loginDto';
+import { Public } from './jwt.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -12,6 +13,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Login del usuario', description: 'Devuelve el JWT del usuario a través de las cookies.' })
   @ApiResponse({ status: 200, description: 'Entre socio, por la sombrita.' })
   @ApiResponse({ status: 401, description: 'Credenciales incorrectas, ¿Quién sos vos?' })
+  @Public()
   @HttpCode(200)
   async login(@Body() body: LoginDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.authService.validateUser(body.email, body.password);

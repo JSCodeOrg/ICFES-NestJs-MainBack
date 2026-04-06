@@ -19,6 +19,7 @@ describe('UserController', () => {
 
   const mockUserService = {
     register: jest.fn(),
+    getAllUsers: jest.fn(),
   };
 
   // Guards mockeados para que siempre permitan el paso

@@ -13,6 +13,7 @@ async function bootstrap() {
     .setTitle('ICFES BI-Dashboard Backend')
     .setDescription('ICFES BI-Dashboard main backend')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
 
   // Este es el llamado de Swagger para que escuche en localhost:3000/api

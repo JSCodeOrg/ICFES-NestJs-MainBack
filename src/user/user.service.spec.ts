@@ -14,7 +14,9 @@ import { User } from '../auth/schemas/user.schema';
 
 let createdUserData: any;
 
-const mockSave = jest.fn();
+
+const mockSave = jest.fn()
+
 
 const MockUserModel = jest.fn().mockImplementation((data) => {
   createdUserData = data;

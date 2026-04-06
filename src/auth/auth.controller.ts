@@ -1,29 +1,19 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UnauthorizedException,
-  Res,
-  HttpCode,
-} from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Res, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Response } from 'express';
-import { ApiOperation, ApiProperty, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { LoginDto } from './dto/loginDto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @Post('login')
   @ApiOperation({ summary: 'Login del usuario', description: 'Devuelve el JWT del usuario a través de las cookies.' })
   @ApiResponse({ status: 200, description: 'Entre socio, por la sombrita.' })
   @ApiResponse({ status: 401, description: 'Credenciales incorrectas, ¿Quién sos vos?' })
   @HttpCode(200)
-  async login(
-    @Body() body: LoginDto,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  async login(@Body() body: LoginDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.authService.validateUser(body.email, body.password);
 
     if (!user) {

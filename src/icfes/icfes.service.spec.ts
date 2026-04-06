@@ -8,15 +8,15 @@ describe('IcfesService', () => {
 
   const distributionData = [
     {
-      genero: "F",
+      genero: 'F',
       cantidad: 1833550,
-      porcentaje: 54.43
+      porcentaje: 54.43,
     },
     {
-      genero: "M",
+      genero: 'M',
       cantidad: 1534839,
-      porcentaje: 45.56
-    }
+      porcentaje: 45.56,
+    },
   ];
 
   const mockResultadoModel = {
@@ -58,9 +58,7 @@ describe('IcfesService', () => {
     it('debería retornar correctamente el promedio anual', async () => {
       const dto = { ano: 2018 };
 
-      const promedioMock = [
-        { promedio: 250.9849904 },
-      ];
+      const promedioMock = [{ promedio: 250.9849904 }];
 
       mockResultadoModel.aggregate.mockResolvedValue(promedioMock);
 
@@ -84,7 +82,7 @@ describe('IcfesService', () => {
           },
         },
       ]);
-    })
+    });
 
     it('debería retornar vacío si no hay datos para el año', async () => {
       const dto = { ano: 2018 };
@@ -99,9 +97,124 @@ describe('IcfesService', () => {
     it('debería lanzar error si falla la base de datos', async () => {
       mockResultadoModel.aggregate.mockRejectedValue(new Error('DB error'));
 
-      await expect(service.promedioAnual({ ano: 2018 }))
-        .rejects
-        .toThrow();
+      await expect(service.promedioAnual({ ano: 2018 })).rejects.toThrow();
+    });
+  });
+  describe('promedioNacional', () => {
+    it('debería retornar correctamente el promedio nacional', async () => {
+      const mockResponse = [{ promedio: 255.3 }];
+
+      mockResultadoModel.aggregate.mockResolvedValue(mockResponse);
+
+      const result = await service.promedioNacional();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledWith([
+        {
+          $match: {
+            PUNT_GLOBAL: { $ne: null },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            promedio: { $avg: '$PUNT_GLOBAL' },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            promedio: 1,
+          },
+        },
+      ]);
+    });
+
+    it('debería lanzar error si falla la base de datos', async () => {
+      mockResultadoModel.aggregate.mockRejectedValue(new Error('DB error'));
+
+      await expect(service.promedioNacional()).rejects.toThrow();
+    });
+  });
+  describe('totalRegistros', () => {
+    it('debería retornar el total de registros', async () => {
+      const mockResponse = [{ total: 3000000 }];
+
+      mockResultadoModel.aggregate.mockResolvedValue(mockResponse);
+
+      const result = await service.totalRegistros();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledWith([
+        {
+          $match: {},
+        },
+        {
+          $count: 'total',
+        },
+      ]);
+    });
+
+    it('debería lanzar error si falla la base de datos', async () => {
+      mockResultadoModel.aggregate.mockRejectedValue(new Error('DB error'));
+
+      await expect(service.totalRegistros()).rejects.toThrow();
+    });
+  });
+  describe('comparacionColegios', () => {
+    it('debería retornar la comparación de colegios', async () => {
+      const mockResponse = [
+        {
+          tipo_colegio: 'OFICIAL',
+          promedio: 250,
+          total: 1000,
+        },
+        {
+          tipo_colegio: 'NO OFICIAL',
+          promedio: 270,
+          total: 500,
+        },
+      ];
+
+      mockResultadoModel.aggregate.mockResolvedValue(mockResponse);
+
+      const result = await service.comparacionColegios();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledWith([
+        {
+          $match: {
+            COLE_NATURALEZA: { $in: ['OFICIAL', 'NO OFICIAL'] },
+            PUNT_GLOBAL: { $ne: null },
+          },
+        },
+        {
+          $group: {
+            _id: '$COLE_NATURALEZA',
+            promedio: { $avg: '$PUNT_GLOBAL' },
+            total: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            tipo_colegio: '$_id',
+            promedio: 1,
+            total: 1,
+          },
+        },
+        {
+          $sort: {
+            tipo_colegio: 1,
+          },
+        },
+      ]);
+    });
+
+    it('debería lanzar error si falla la base de datos', async () => {
+      mockResultadoModel.aggregate.mockRejectedValue(new Error('DB error'));
+
+      await expect(service.comparacionColegios()).rejects.toThrow();
     });
   });
 });

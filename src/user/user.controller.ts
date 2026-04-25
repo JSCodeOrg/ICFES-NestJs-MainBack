@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, Query } from '@nestjs/common';
+import { Body, Controller, Post, Get, Query, Patch } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/createUserDto';
@@ -42,4 +42,13 @@ export class UserController {
   getProfile() {
     return { message: 'Adelante asalariado' };
   }
+
+  @Patch('user/rol')
+  @Roles('admin')
+  UpdateUserRol(@Query('id') id: string, @Query('role') role: string) {
+    return this.userService.updateUserRol(id, role);
+
+  }
+
+
 }

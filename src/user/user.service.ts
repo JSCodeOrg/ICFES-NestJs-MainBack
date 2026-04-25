@@ -73,4 +73,19 @@ export class UserService {
       throw new InternalServerErrorException(error);
     }
   }
+  async updateUserRol(id: string, role: string) {
+    try {
+      const user = await this.userModel.findById(id); 
+      if (!user) {
+        throw new ConflictException('Usuario no encontrado.');
+      }
+      user.role = role;
+      await user.save();
+      return {
+        message: 'Rol de usuario actualizado correctamente.',
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
 }

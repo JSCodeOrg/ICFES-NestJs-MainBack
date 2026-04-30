@@ -71,7 +71,7 @@ export class IcfesController {
   @Get('promedio-zona')
   @ApiOperation({ summary: 'Promedio por zona urbana o rural', description: 'Devuelve el promedio por zona urbana o rural' })
     promedioZonal(){
-    return this.icfesService.promediozonal();
+    return this.icfesService.promedioZonal();
   }
 
   @Get('top-municipios')

@@ -20,6 +20,11 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
+  app.enableCors({
+    origin: [process.env.FRONTEND_URL],
+    credentials: true
+  })
+
   // Este es un globalPipe para poder usar Class-validator de forma global para validar entradas
   app.useGlobalPipes(
     new ValidationPipe({

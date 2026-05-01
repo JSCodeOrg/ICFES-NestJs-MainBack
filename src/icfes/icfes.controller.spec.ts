@@ -11,6 +11,10 @@ describe('IcfesController', () => {
     promedioNacional: jest.fn(),
     totalRegistros: jest.fn(),
     comparacionColegios: jest.fn(),
+    promedioDepartamentos: jest.fn(),
+    promedioZonal: jest.fn(),
+    topMunicipios: jest.fn(),
+    promedioPorEdad: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -114,6 +118,70 @@ describe('IcfesController', () => {
 
       expect(result).toEqual(mockResponse);
       expect(mockIcfesService.comparacionColegios).toHaveBeenCalled();
+    });
+  });
+  describe('promedioDepartamento', () => {
+    it('debería llamar al servicio de promedio por departamento', async () => {
+      const mockResponse = [
+        { departamento: 'ANTIOQUIA', promedio: 265.4 },
+        { departamento: 'CUNDINAMARCA', promedio: 258.1 },
+      ];
+
+      mockIcfesService.promedioDepartamentos.mockResolvedValue(mockResponse);
+
+      const result = await controller.promedioDepartameto();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.promedioDepartamentos).toHaveBeenCalled();
+    });
+  });
+
+  describe('promedioZona', () => {
+    it('debería llamar al servicio de promedio por zona', async () => {
+      const mockResponse = [
+        { zona: 'URBANO', promedio: 268.3 },
+        { zona: 'RURAL', promedio: 241.7 },
+      ];
+
+      mockIcfesService.promedioZonal.mockResolvedValue(mockResponse);
+
+      const result = await controller.promedioZonal();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.promedioZonal).toHaveBeenCalled();
+    });
+  });
+
+  describe('topMunicipios', () => {
+    it('debería llamar al servicio de top municipios', async () => {
+      const mockResponse = [
+        { municipio: 'BOGOTÁ', promedio: 280.5 },
+        { municipio: 'MEDELLÍN', promedio: 275.2 },
+      ];
+
+      mockIcfesService.topMunicipios.mockResolvedValue(mockResponse);
+
+      const result = await controller.topMunicipios();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.topMunicipios).toHaveBeenCalled();
+    });
+  });
+
+  describe('promedioEdades', () => {
+    it('debería llamar al servicio de promedio por edad', async () => {
+      const mockResponse = [
+        { edad: 16, promedio: 255.1 },
+        { edad: 17, promedio: 261.4 },
+        { edad: 18, promedio: 258.9 },
+      ];
+
+      mockIcfesService.promedioPorEdad.mockResolvedValue(mockResponse);
+
+      const result = await controller.promedioEdades();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.promedioPorEdad).toHaveBeenCalled();
     });
   });
 });

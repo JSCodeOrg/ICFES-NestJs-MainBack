@@ -11,39 +11,73 @@ export class IcfesService {
     private readonly resultadoModel: Model<Resultado>,
   ) { }
 
-  async distribucionGenero() {
+  async distribucionGeneroPorAnio() {
     try {
       return this.resultadoModel.aggregate([
         {
           $group: {
-            _id: '$ESTU_GENERO',
+            _id: {
+              anio: '$ANIO_EXAMEN',
+              genero: '$ESTU_GENERO',
+            },
             cantidad: { $sum: 1 },
           },
         },
         {
           $group: {
-            _id: null,
+            _id: '$_id.anio',
             total: { $sum: '$cantidad' },
-            data: {
+            generos: {
               $push: {
-                genero: '$_id',
+                genero: '$_id.genero',
                 cantidad: '$cantidad',
               },
             },
           },
         },
         {
-          $unwind: '$data',
-        },
-        {
           $project: {
             _id: 0,
-            genero: '$data.genero',
-            cantidad: '$data.cantidad',
-            porcentaje: {
-              $multiply: [{ $divide: ['$data.cantidad', '$total'] }, 100],
+            key: { $toString: '$_id' },
+            values: {
+              $map: {
+                input: ['M', 'F'], // 👈 ORDEN FIJO (importante)
+                as: 'g',
+                in: {
+                  $let: {
+                    vars: {
+                      match: {
+                        $arrayElemAt: [
+                          {
+                            $filter: {
+                              input: '$generos',
+                              as: 'item',
+                              cond: { $eq: ['$$item.genero', '$$g'] },
+                            },
+                          },
+                          0,
+                        ],
+                      },
+                    },
+                    in: {
+                      $multiply: [
+                        {
+                          $divide: [
+                            { $ifNull: ['$$match.cantidad', 0] },
+                            '$total',
+                          ],
+                        },
+                        100,
+                      ],
+                    },
+                  },
+                },
+              },
             },
           },
+        },
+        {
+          $sort: { key: 1 },
         },
       ]);
     } catch (error) {

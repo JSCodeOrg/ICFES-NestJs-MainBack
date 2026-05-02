@@ -15,7 +15,7 @@ export class IcfesController {
   @ApiResponse({ status: 200, description: 'Conteo por género y porcentaje' })
   @ApiResponse({ status: 500, description: 'Ocurrió un error al calcular la distribución por género' })
   distribucionGenero() {
-    return this.icfesService.distribucionGenero();
+    return this.icfesService.distribucionGeneroPorAnio();
   }
 
   @Get('promedio-anual')

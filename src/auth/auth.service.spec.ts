@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { Types } from 'mongoose';
+import { verify } from 'crypto';
 
 jest.mock('bcryptjs', () => ({
   compare: jest.fn(),
@@ -15,10 +16,12 @@ describe('AuthService', () => {
 
   const mockUserModel = {
     findOne: jest.fn(),
+    findById: jest.fn(),
   };
 
   const mockJwtService = {
     sign: jest.fn<string, [Record<string, unknown>]>(),
+    verify: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -157,4 +160,60 @@ describe('AuthService', () => {
       });
     });
   });
+
+  it('retorna usuario si token es válido y existe usuario', async () => {
+    const token = 'valid-token';
+
+    const payload = {
+      id: '1',
+      email: 'test@test.com',
+      role: 'admin',
+    };
+
+    const user = {
+      _id: '1',
+      email: 'test@test.com',
+      role: 'admin',
+    };
+
+    mockJwtService.verify.mockReturnValue(payload);
+    mockUserModel.findById.mockResolvedValue(user);
+
+    const result = await service.getMe(token);
+
+    expect(mockJwtService.verify).toHaveBeenCalledWith(token);
+    expect(mockUserModel.findById).toHaveBeenCalledWith(payload.id);
+
+    expect(result).toEqual({
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+    });
+  });
+
+  it('lanza UnauthorizedException si token es inválido', async () => {
+    mockJwtService.verify.mockImplementation(() => {
+      throw new Error('invalid token');
+    });
+
+    await expect(service.getMe('bad-token')).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it('lanza UnauthorizedException si usuario no existe', async () => {
+    const payload = {
+      id: '1',
+      email: 'test@test.com',
+      role: 'admin',
+    };
+
+    mockJwtService.verify.mockReturnValue(payload);
+    mockUserModel.findById.mockResolvedValue(null);
+
+    await expect(service.getMe('valid-token')).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
 });

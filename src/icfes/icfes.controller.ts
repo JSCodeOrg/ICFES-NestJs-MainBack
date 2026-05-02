@@ -5,7 +5,7 @@ import { PromedioAnualDto } from './dto/promedioAnualDto';
 
 @Controller('icfes')
 export class IcfesController {
-  constructor(private readonly icfesService: IcfesService) {}
+  constructor(private readonly icfesService: IcfesService) { }
 
   @ApiBearerAuth()
   @Get('distribucion-genero')
@@ -16,7 +16,7 @@ export class IcfesController {
   @ApiResponse({ status: 200, description: 'Conteo por género y porcentaje' })
   @ApiResponse({ status: 500, description: 'Ocurrió un error al calcular la distribución por género' })
   distribucionGenero() {
-    return this.icfesService.distribucionGenero();
+    return this.icfesService.distribucionGeneroPorAnio();
   }
 
   @ApiBearerAuth()
@@ -66,4 +66,30 @@ export class IcfesController {
   comparacionColegios() {
     return this.icfesService.comparacionColegios();
   }
+
+  @Get('promedio-departamento')
+  @ApiOperation({ summary: 'Promedio por departamentos', description: 'Devuelve el promedio de cada departamentos' })
+  promedioDepartameto() {
+    return this.icfesService.promedioDepartamentos();
+  }
+
+  @Get('promedio-zona')
+  @ApiOperation({ summary: 'Promedio por zona urbana o rural', description: 'Devuelve el promedio por zona urbana o rural' })
+    promedioZonal(){
+    return this.icfesService.promedioZonal();
+  }
+
+  @Get('top-municipios')
+  @ApiOperation({summary: 'Top de municipios', description: 'Devuelve los mejores 20 municipios'})
+  topMunicipios(){
+    return this.icfesService.topMunicipios();
+  }
+
+  @Get('promedio-edad')
+  @ApiOperation({summary: 'Promedio agrupado por edad', description: 'Devuelve el promedio de puntaje agrupado por edad'})
+  promedioEdades(){
+    return this.icfesService.promedioPorEdad();
+  }
+
+
 }

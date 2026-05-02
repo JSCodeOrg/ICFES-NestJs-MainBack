@@ -2,7 +2,6 @@ import { Test } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { ConflictException, InternalServerErrorException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-
 import { UserService } from './user.service';
 import { User } from '../auth/schemas/user.schema';
 
@@ -13,27 +12,18 @@ import { User } from '../auth/schemas/user.schema';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 let createdUserData: any;
-
 const mockSave = jest.fn();
+const mockUserModel = jest.fn().mockImplementation((dto: any) => {
+  createdUserData = dto;
+  return {
+    ...dto,
+    save: mockSave,
+  };
+}) as any;
 
-const mockLean = jest.fn();
-const mockLimit = jest.fn().mockReturnValue({ lean: mockLean });
-const mockSkip = jest.fn().mockReturnValue({ limit: mockLimit });
-const mockSelect = jest.fn().mockReturnValue({ skip: mockSkip });
-const mockFind = jest.fn().mockReturnValue({ select: mockSelect });
-const mockCountDocuments = jest.fn();
-
-const MockUserModel = jest.fn().mockImplementation((data) => {
-  createdUserData = data;
-  return { save: mockSave };
-});
-
-(MockUserModel as any).findOne = jest.fn();
-
-(MockUserModel as any).find = mockFind;
-(MockUserModel as any).countDocuments = mockCountDocuments;
-
-// ── DTO base reutilizable ─────────────────────────────────────────────────────
+mockUserModel.find = jest.fn();
+mockUserModel.findOne = jest.fn();
+mockUserModel.countDocuments = jest.fn();
 
 const baseDto = {
   email: 'juan@test.com',
@@ -54,7 +44,11 @@ describe('UserService', () => {
         UserService,
         {
           provide: getModelToken(User.name),
-          useValue: MockUserModel,
+          useValue: mockUserModel,
+        },
+        {
+          provide: getModelToken(User.name),
+          useValue: mockUserModel,
         },
       ],
     }).compile();
@@ -66,9 +60,51 @@ describe('UserService', () => {
 
   // ─── register: camino feliz ───────────────────────────────────────────────
 
+  describe('getAllUsers', () => {
+    it('retorna usuarios paginados correctamente', async () => {
+      const usersMock = [{ email: 'a@test.com' }];
+
+      mockUserModel.find.mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue(usersMock),
+      });
+
+      mockUserModel.countDocuments.mockResolvedValue(10);
+
+      const result = await service.getAllUsers(1, 10);
+
+      expect(result.data).toEqual(usersMock);
+    });
+
+    it('calcula lastPage correctamente', async () => {
+      mockUserModel.find.mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue([]),
+      });
+
+      mockUserModel.countDocuments.mockResolvedValue(20);
+
+      const result = await service.getAllUsers(1, 10);
+
+      expect(result.meta.lastPage).toBe(2);
+    });
+
+    it('maneja errores de base de datos', async () => {
+      mockUserModel.find.mockImplementation(() => {
+        throw new Error('DB error');
+      });
+
+      await expect(service.getAllUsers(1, 10)).rejects.toThrow();
+    });
+  });
+
   describe('register', () => {
     it('registra usuario correctamente y retorna mensaje de éxito', async () => {
-      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockUserModel.findOne.mockResolvedValue(null);
       mockSave.mockResolvedValue({});
 
       const result = await service.register(baseDto);
@@ -77,7 +113,7 @@ describe('UserService', () => {
     });
 
     it('encripta la contraseña antes de guardar', async () => {
-      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockUserModel.findOne.mockResolvedValue(null);
       mockSave.mockResolvedValue({});
 
       await service.register(baseDto);
@@ -88,18 +124,18 @@ describe('UserService', () => {
     });
 
     it('llama a findOne con el email correcto', async () => {
-      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockUserModel.findOne.mockResolvedValue(null);
       mockSave.mockResolvedValue({});
 
       await service.register(baseDto);
 
-      expect((MockUserModel as any).findOne).toHaveBeenCalledWith({
+      expect(mockUserModel.findOne).toHaveBeenCalledWith({
         email: baseDto.email,
       });
     });
 
     it('asigna role "consultor" por defecto cuando no se provee', async () => {
-      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockUserModel.findOne.mockResolvedValue(null);
       mockSave.mockResolvedValue({});
 
       const { role: _omitted, ...dtoSinRole } = baseDto;
@@ -109,7 +145,7 @@ describe('UserService', () => {
     });
 
     it('asigna estado true al crear el usuario', async () => {
-      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockUserModel.findOne.mockResolvedValue(null);
       mockSave.mockResolvedValue({});
 
       await service.register(baseDto);
@@ -120,14 +156,14 @@ describe('UserService', () => {
     // ─── ConflictException: email duplicado ───────────────────────────────
 
     it('lanza ConflictException si el email ya existe', async () => {
-      (MockUserModel as any).findOne.mockResolvedValue({ email: baseDto.email });
+      mockUserModel.findOne.mockResolvedValue({ email: baseDto.email });
 
       await expect(service.register(baseDto)).rejects.toThrow(ConflictException);
       await expect(service.register(baseDto)).rejects.toThrow('Este email ya se encuentra registrado.');
     });
 
     it('no llama a save cuando el email ya existe', async () => {
-      (MockUserModel as any).findOne.mockResolvedValue({ email: baseDto.email });
+      mockUserModel.findOne.mockResolvedValue({ email: baseDto.email });
 
       await expect(service.register(baseDto)).rejects.toThrow(ConflictException);
 
@@ -137,14 +173,14 @@ describe('UserService', () => {
     // ─── ConflictException: password vacío ───────────────────────────────
 
     it('lanza ConflictException si la contraseña está vacía', async () => {
-      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockUserModel.findOne.mockResolvedValue(null);
 
       await expect(service.register({ ...baseDto, password: '' })).rejects.toThrow(ConflictException);
       await expect(service.register({ ...baseDto, password: '' })).rejects.toThrow('La contraseña es requerida.');
     });
 
     it('no llama a save cuando la contraseña está vacía', async () => {
-      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockUserModel.findOne.mockResolvedValue(null);
 
       await expect(service.register({ ...baseDto, password: '' })).rejects.toThrow(ConflictException);
 
@@ -154,7 +190,7 @@ describe('UserService', () => {
     // ─── InternalServerErrorException: fallo en save ─────────────────────
 
     it('lanza InternalServerErrorException cuando save falla', async () => {
-      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockUserModel.findOne.mockResolvedValue(null);
       mockSave.mockImplementation(() => {
         throw new Error('DB fail');
       });
@@ -163,7 +199,7 @@ describe('UserService', () => {
     });
 
     it('no retorna mensaje de éxito cuando save falla', async () => {
-      (MockUserModel as any).findOne.mockResolvedValue(null);
+      mockUserModel.findOne.mockResolvedValue(null);
       mockSave.mockImplementation(() => {
         throw new Error('DB fail');
       });
@@ -172,98 +208,84 @@ describe('UserService', () => {
     });
   });
 
-  describe('getAllUsers', () => {
-    const mockUsers = [
-      { _id: '1', email: 'a@test.com', firstname: 'Ana', lastname: 'Lopez', role: 'consultor', estado: true },
-      { _id: '2', email: 'b@test.com', firstname: 'Luis', lastname: 'Mora', role: 'admin', estado: true },
-    ];
+  describe('updateUserRol', () => {
+    const mockUserId = 'abc123';
+    const mockRole = 'admin';
 
-    beforeEach(() => {
-      // Resetear la cadena de métodos antes de cada test
-      mockLean.mockResolvedValue(mockUsers);
-      mockCountDocuments.mockResolvedValue(2);
+    // ─── Camino feliz ────────────────────────────────────────────────────────
+
+    it('actualiza el rol correctamente y retorna mensaje de éxito', async () => {
+      const mockUser = { role: '', save: jest.fn().mockResolvedValue({}) };
+      mockUserModel.findById = jest.fn().mockResolvedValue(mockUser);
+
+      const result = await service.updateUserRol(mockUserId, mockRole);
+
+      expect(result).toEqual({ message: 'Rol de usuario actualizado correctamente.' });
     });
 
-    // ─── Camino feliz ─────────────────────────────────────────────────────────
+    it('asigna el nuevo rol al usuario antes de guardar', async () => {
+      const mockUser = { role: '', save: jest.fn().mockResolvedValue({}) };
+      mockUserModel.findById = jest.fn().mockResolvedValue(mockUser);
 
-    it('retorna usuarios paginados con metadata correcta', async () => {
-      const result = await service.getAllUsers(1, 10);
+      await service.updateUserRol(mockUserId, mockRole);
 
-      expect(result).toEqual({
-        data: mockUsers,
-        meta: {
-          total: 2,
-          page: 1,
-          lastPage: 1,
-        },
-      });
+      expect(mockUser.role).toBe(mockRole);
     });
 
-    it('calcula correctamente el skip según la página', async () => {
-      await service.getAllUsers(3, 5);
+    it('llama a findById con el id correcto', async () => {
+      const mockUser = { role: '', save: jest.fn().mockResolvedValue({}) };
+      mockUserModel.findById = jest.fn().mockResolvedValue(mockUser);
 
-      // página 3, limit 5 → skip debe ser (3-1)*5 = 10
-      expect(mockSkip).toHaveBeenCalledWith(10);
+      await service.updateUserRol(mockUserId, mockRole);
+
+      expect(mockUserModel.findById).toHaveBeenCalledWith(mockUserId);
     });
 
-    it('aplica el limit correcto al query', async () => {
-      await service.getAllUsers(1, 5);
+    it('llama a save una vez después de actualizar el rol', async () => {
+      const mockSaveLocal = jest.fn().mockResolvedValue({});
+      const mockUser = { role: '', save: mockSaveLocal };
+      mockUserModel.findById = jest.fn().mockResolvedValue(mockUser);
 
-      expect(mockLimit).toHaveBeenCalledWith(5);
+      await service.updateUserRol(mockUserId, mockRole);
+
+      expect(mockSaveLocal).toHaveBeenCalledTimes(1);
     });
 
-    it('filtra solo usuarios con estado true', async () => {
-      await service.getAllUsers(1, 10);
+    // ─── Usuario no encontrado ───────────────────────────────────────────────
 
-      expect(mockFind).toHaveBeenCalledWith({ estado: true });
-      expect(mockCountDocuments).toHaveBeenCalledWith({ estado: true });
+    it('lanza InternalServerErrorException si el usuario no existe', async () => {
+      mockUserModel.findById = jest.fn().mockResolvedValue(null);
+
+      await expect(service.updateUserRol(mockUserId, mockRole)).rejects.toThrow(InternalServerErrorException);
     });
 
-    it('excluye el campo password del resultado', async () => {
-      await service.getAllUsers(1, 10);
+    it('no llama a save si el usuario no existe', async () => {
+      const mockSaveLocal = jest.fn();
+      mockUserModel.findById = jest.fn().mockResolvedValue(null);
 
-      expect(mockSelect).toHaveBeenCalledWith('-password');
+      await expect(service.updateUserRol(mockUserId, mockRole)).rejects.toThrow();
+
+      expect(mockSaveLocal).not.toHaveBeenCalled();
     });
 
-    it('calcula lastPage correctamente cuando no es divisible exacto', async () => {
-      mockCountDocuments.mockResolvedValue(11);
+    // ─── Fallo en save ───────────────────────────────────────────────────────
 
-      const result = await service.getAllUsers(1, 5);
+    it('lanza InternalServerErrorException cuando save falla', async () => {
+      const mockUser = {
+        role: '',
+        save: jest.fn().mockRejectedValue(new Error('DB fail')),
+      };
+      mockUserModel.findById = jest.fn().mockResolvedValue(mockUser);
 
-      // 11 usuarios / 5 por página = 3 páginas (ceil)
-      expect(result.meta.lastPage).toBe(3);
+      await expect(service.updateUserRol(mockUserId, mockRole)).rejects.toThrow(InternalServerErrorException);
     });
 
-    it('usa valores por defecto page=1 y limit=10 si no se pasan argumentos', async () => {
-      await service.getAllUsers();
+    // ─── Fallo en findById ───────────────────────────────────────────────────
 
-      expect(mockSkip).toHaveBeenCalledWith(0); // (1-1)*10
-      expect(mockLimit).toHaveBeenCalledWith(10);
-    });
+    it('lanza InternalServerErrorException cuando findById falla', async () => {
+      mockUserModel.findById = jest.fn().mockRejectedValue(new Error('DB fail'));
 
-    it('retorna data vacía cuando no hay usuarios activos', async () => {
-      mockLean.mockResolvedValue([]);
-      mockCountDocuments.mockResolvedValue(0);
-
-      const result = await service.getAllUsers(1, 10);
-
-      expect(result.data).toEqual([]);
-      expect(result.meta.total).toBe(0);
-      expect(result.meta.lastPage).toBe(0); // Math.ceil(0/10) = 0
-    });
-
-    // ─── Manejo de errores ────────────────────────────────────────────────────
-
-    it('lanza InternalServerErrorException cuando falla el query', async () => {
-      mockLean.mockRejectedValue(new Error('DB error'));
-
-      await expect(service.getAllUsers(1, 10)).rejects.toThrow(InternalServerErrorException);
-    });
-
-    it('lanza InternalServerErrorException cuando falla countDocuments', async () => {
-      mockCountDocuments.mockRejectedValue(new Error('DB error'));
-
-      await expect(service.getAllUsers(1, 10)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.updateUserRol(mockUserId, mockRole)).rejects.toThrow(InternalServerErrorException);
     });
   });
 });

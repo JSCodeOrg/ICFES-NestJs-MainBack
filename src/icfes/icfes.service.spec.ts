@@ -6,12 +6,6 @@ import { InternalServerErrorException } from '@nestjs/common';
 
 // ── Tipos espejo del service ──────────────────────────────────────────────────
 
-interface DistribucionGeneroItem {
-  genero: string;
-  cantidad: number;
-  porcentaje: number;
-}
-
 interface PromedioItem {
   promedio: number;
 }
@@ -53,45 +47,6 @@ describe('IcfesService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
-  });
-
-  // ─── distribucionGenero ───────────────────────────────────────────────────
-
-  describe('distribucionGenero', () => {
-    it('retorna los datos de distribución correctamente', async () => {
-      const data: DistribucionGeneroItem[] = [
-        { genero: 'M', cantidad: 60, porcentaje: 60 },
-        { genero: 'F', cantidad: 40, porcentaje: 40 },
-      ];
-      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
-
-      const result: DistribucionGeneroItem[] = (await service.distribucionGenero()) as DistribucionGeneroItem[];
-
-      expect(result).toEqual(data);
-      expect(mockResultadoModel.aggregate).toHaveBeenCalledTimes(1);
-    });
-
-    it('retorna arreglo vacío cuando no hay datos', async () => {
-      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve([]));
-
-      const result = await service.distribucionGenero();
-
-      expect(result).toEqual([]);
-    });
-
-    it('propaga el error de BD sin envolver (falta await en service)', async () => {
-      const dbError = new Error('DB fail');
-      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(dbError));
-
-      await expect(service.distribucionGenero()).rejects.toThrow('DB fail');
-    });
-    it('lanza InternalServerErrorException cuando aggregate lanza síncronamente', async () => {
-      mockResultadoModel.aggregate.mockImplementation(() => {
-        throw new Error('sync error');
-      });
-
-      await expect(service.distribucionGenero()).rejects.toThrow(InternalServerErrorException);
-    });
   });
 
   // ─── promedioAnual ────────────────────────────────────────────────────────
@@ -245,6 +200,143 @@ describe('IcfesService', () => {
       });
 
       await expect(service.comparacionColegios()).rejects.toThrow(InternalServerErrorException);
+    });
+  });
+  describe('distribucionGeneroPorAnio', () => {
+    it('retorna los datos correctamente', async () => {
+      const data = [
+        { key: '2018', values: [60, 40] },
+        { key: '2019', values: [55, 45] },
+      ];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.distribucionGeneroPorAnio();
+
+      expect(result).toEqual(data);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledTimes(1);
+    });
+
+    it('retorna arreglo vacío cuando no hay datos', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve([]));
+
+      const result = await service.distribucionGeneroPorAnio();
+
+      expect(result).toEqual([]);
+    });
+
+    it('propaga error de BD', async () => {
+      const dbError = new Error('DB fail');
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(dbError));
+
+      await expect(service.distribucionGeneroPorAnio()).rejects.toThrow('DB fail');
+    });
+  });
+  describe('promedioDepartamentos', () => {
+    it('retorna los datos correctamente', async () => {
+      const data = [
+        { departamento: 'VALLE', promedio: 260, total_estudiantes: 100 },
+      ];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.promedioDepartamentos();
+
+      expect(result).toEqual(data);
+    });
+
+    it('retorna arreglo vacío', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve([]));
+
+      const result = await service.promedioDepartamentos();
+
+      expect(result).toEqual([]);
+    });
+
+    it('propaga error de BD', async () => {
+      const dbError = new Error('DB fail');
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(dbError));
+
+      await expect(service.promedioDepartamentos()).rejects.toThrow('DB fail');
+    });
+  });
+  describe('promedioZonal', () => {
+    it('retorna los datos correctamente', async () => {
+      const data = [
+        { zona: 'URBANO', promedio: 270, total_estudiantes: 80 },
+      ];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.promedioZonal();
+
+      expect(result).toEqual(data);
+    });
+
+    it('retorna arreglo vacío', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve([]));
+
+      const result = await service.promedioZonal();
+
+      expect(result).toEqual([]);
+    });
+
+    it('propaga error de BD', async () => {
+      const dbError = new Error('DB fail');
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(dbError));
+
+      await expect(service.promedioZonal()).rejects.toThrow('DB fail');
+    });
+  });
+  describe('topMunicipios', () => {
+    it('retorna los datos correctamente', async () => {
+      const data = [
+        { municipio: 'TULUA', promedio: 280, total_estudiantes: 50 },
+      ];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.topMunicipios();
+
+      expect(result).toEqual(data);
+    });
+
+    it('retorna arreglo vacío', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve([]));
+
+      const result = await service.topMunicipios();
+
+      expect(result).toEqual([]);
+    });
+
+    it('propaga error de BD', async () => {
+      const dbError = new Error('DB fail');
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(dbError));
+
+      await expect(service.topMunicipios()).rejects.toThrow('DB fail');
+    });
+  });
+  describe('promedioPorEdad', () => {
+    it('retorna los datos correctamente', async () => {
+      const data = [
+        { edad: 17, promedio: 250, total_estudiantes: 30 },
+      ];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.promedioPorEdad();
+
+      expect(result).toEqual(data);
+    });
+
+    it('retorna arreglo vacío', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve([]));
+
+      const result = await service.promedioPorEdad();
+
+      expect(result).toEqual([]);
+    });
+
+    it('propaga error de BD', async () => {
+      const dbError = new Error('DB fail');
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(dbError));
+
+      await expect(service.promedioPorEdad()).rejects.toThrow('DB fail');
     });
   });
 });

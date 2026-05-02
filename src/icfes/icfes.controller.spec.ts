@@ -6,7 +6,7 @@ describe('IcfesController', () => {
   let controller: IcfesController;
 
   const mockIcfesService = {
-    distribucionGenero: jest.fn(),
+    distribucionGeneroPorAnio: jest.fn(),
     promedioAnual: jest.fn(),
     promedioNacional: jest.fn(),
     totalRegistros: jest.fn(),
@@ -35,28 +35,20 @@ describe('IcfesController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('distribucionGenero', () => {
-    it('Debería llamar al servicio de distribucion de genero', async () => {
+  describe('distribucionGeneroPorAnio', () => {
+    it('Debería llamar al servicio de distribución por año', async () => {
       const mockResponse = [
-        {
-          genero: 'F',
-          cantidad: 1833550,
-          porcentaje: 54.43,
-        },
-        {
-          genero: 'M',
-          cantidad: 1534839,
-          porcentaje: 45.56,
-        },
+        { key: '2018', values: [60, 40] },
+        { key: '2019', values: [55, 45] },
       ];
 
-      mockIcfesService.distribucionGenero.mockResolvedValue(mockResponse);
+      mockIcfesService.distribucionGeneroPorAnio.mockResolvedValue(mockResponse);
 
       const result = await controller.distribucionGenero();
 
       expect(result).toEqual(mockResponse);
 
-      expect(mockIcfesService.distribucionGenero).toHaveBeenCalled();
+      expect(mockIcfesService.distribucionGeneroPorAnio).toHaveBeenCalled();
     });
   });
 

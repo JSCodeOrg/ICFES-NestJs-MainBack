@@ -3,6 +3,7 @@ import { IcfesService } from './icfes.service';
 import { getModelToken } from '@nestjs/mongoose';
 import { Resultado } from './schema/icfes.schema';
 import { InternalServerErrorException } from '@nestjs/common';
+import { CacheService } from '../cache/cache.service';
 
 // ── Tipos espejo del service ──────────────────────────────────────────────────
 
@@ -29,7 +30,13 @@ describe('IcfesService', () => {
     aggregate: jest.fn(),
   };
 
+  const mockCacheService = {
+    remember: jest.fn(),
+  };
+
+
   beforeEach(async () => {
+    jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         IcfesService,
@@ -37,6 +44,10 @@ describe('IcfesService', () => {
           provide: getModelToken(Resultado.name),
           useValue: mockResultadoModel,
         },
+        {
+          provide: CacheService,
+          useValue: mockCacheService,
+        }
       ],
     }).compile();
 
@@ -166,15 +177,36 @@ describe('IcfesService', () => {
 
   // ─── comparacionColegios ──────────────────────────────────────────────────
 
+  interface ComparacionColegiosPorAnioItem {
+    tipo_colegio: string;
+    data: {
+      key: string;
+      value: number;
+    }[];
+  }
+
   describe('comparacionColegios', () => {
-    it('retorna la comparación de colegios correctamente', async () => {
-      const data: ComparacionColegiosItem[] = [
-        { tipo_colegio: 'NO OFICIAL', promedio: 270, total: 5 },
-        { tipo_colegio: 'OFICIAL', promedio: 250, total: 10 },
+    it('retorna la comparación de colegios por año correctamente', async () => {
+      const data: ComparacionColegiosPorAnioItem[] = [
+        {
+          tipo_colegio: 'OFICIAL',
+          data: [
+            { key: '2014', value: 250.1 },
+            { key: '2015', value: 260.3 },
+          ],
+        },
+        {
+          tipo_colegio: 'NO OFICIAL',
+          data: [
+            { key: '2014', value: 270.5 },
+            { key: '2015', value: 280.2 },
+          ],
+        },
       ];
+
       mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
 
-      const result = (await service.comparacionColegios()) as ComparacionColegiosItem[];
+      const result = (await service.comparacionColegios()) as ComparacionColegiosPorAnioItem[];
 
       expect(result).toEqual(data);
       expect(mockResultadoModel.aggregate).toHaveBeenCalledTimes(1);
@@ -194,6 +226,7 @@ describe('IcfesService', () => {
 
       await expect(service.comparacionColegios()).rejects.toThrow('DB fail');
     });
+
     it('lanza InternalServerErrorException cuando aggregate lanza síncronamente', async () => {
       mockResultadoModel.aggregate.mockImplementation(() => {
         throw new Error('sync error');
@@ -339,4 +372,39 @@ describe('IcfesService', () => {
       await expect(service.promedioPorEdad()).rejects.toThrow('DB fail');
     });
   });
+
+  describe('topDepartamentos', () => {
+    it('debería retornar el top de departamentos', async () => {
+      const mockResponse = [
+        { departamento: 'BOGOTÁ', promedio: 285.3, total_estudiantes: 10000 },
+        { departamento: 'ANTIOQUIA', promedio: 270.1, total_estudiantes: 8000 },
+      ];
+
+      mockResultadoModel.aggregate.mockResolvedValue(mockResponse);
+
+      const result = await service.topDepartamentos(5);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalled();
+    });
+
+    it('debería usar limit 5 por defecto', async () => {
+      mockResultadoModel.aggregate.mockResolvedValue([]);
+
+      await service.topDepartamentos();
+
+      expect(mockResultadoModel.aggregate).toHaveBeenCalled();
+    });
+
+    it('debería lanzar InternalServerErrorException si falla el aggregate', async () => {
+      mockResultadoModel.aggregate.mockImplementation(() => {
+        throw new Error('DB error')
+      });
+
+      await expect(service.topDepartamentos(5)).rejects.toThrow(
+        InternalServerErrorException
+      );
+    });
+  });
+
 });

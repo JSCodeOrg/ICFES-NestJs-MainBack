@@ -524,4 +524,42 @@ export class IcfesService {
       );
     }
   }
+
+  async getMetricasMunicipiosPorDepartamento(departamento: string) {
+    try {
+      const result = await this.resultadoModel.aggregate([
+        {
+          $match: {
+            ESTU_DEPTO_RESIDE: departamento.toUpperCase(),
+          },
+        },
+        {
+          $group: {
+            _id: "$ESTU_MCPIO_RESIDE",
+            promedio: { $avg: "$PUNT_GLOBAL" },
+            total_estudiantes: { $sum: 1 },
+            desviacion: { $stdDevPop: "$PUNT_GLOBAL" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            municipio: "$_id",
+            promedio: { $round: ["$promedio", 2] },
+            total_estudiantes: 1,
+            desviacion: { $round: ["$desviacion", 2] },
+          },
+        },
+        {
+          $sort: { promedio: -1 },
+        },
+      ]);
+
+      return result;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        "Error al obtener métricas de municipios"
+      );
+    }
+  }
 }

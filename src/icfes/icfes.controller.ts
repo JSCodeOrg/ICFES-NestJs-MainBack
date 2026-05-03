@@ -186,5 +186,21 @@ export class IcfesController {
     );
   }
 
+  @Get('metricas-municipios-departamento')
+  @ApiOperation({
+    summary: 'Métricas por municipio de un departamento',
+    description: 'Devuelve promedio, total de estudiantes y desviación estándar por municipio',
+  })
+  metricasMunicipiosDepartamento(@Query() dto: Departamento) {
+    return this.cacheService.remember(
+      'metricas_municipios_departamento',
+      { dto },
+      () =>
+        this.icfesService.getMetricasMunicipiosPorDepartamento(
+          dto.departamento
+        )
+    );
+  }
+
 
 }

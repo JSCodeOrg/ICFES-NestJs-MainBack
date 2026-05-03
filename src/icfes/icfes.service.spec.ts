@@ -406,5 +406,137 @@ describe('IcfesService', () => {
       );
     });
   });
+  describe('getPromedioHistoricoPorDepartamento', () => {
+    it('debería retornar el promedio histórico de un departamento', async () => {
+      const mockResponse = [
+        { year: 2018, promedio: 265.4 },
+        { year: 2019, promedio: 270.1 },
+      ];
+
+      mockResultadoModel.aggregate.mockResolvedValue(mockResponse);
+
+      const result = await service.getPromedioHistoricoPorDepartamento('ANTIOQUIA');
+
+      expect(result).toEqual(mockResponse);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalled();
+    });
+
+    it('debería retornar arreglo vacío cuando no hay datos', async () => {
+      mockResultadoModel.aggregate.mockResolvedValue([]);
+
+      const result = await service.getPromedioHistoricoPorDepartamento('ANTIOQUIA');
+
+      expect(result).toEqual([]);
+    });
+
+    it('debería lanzar InternalServerErrorException si falla el aggregate', async () => {
+      mockResultadoModel.aggregate.mockImplementation(() => {
+        throw new Error('DB error');
+      });
+
+      await expect(
+        service.getPromedioHistoricoPorDepartamento('ANTIOQUIA')
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('debería propagar error de BD sin envolver', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(new Error('DB fail')));
+
+      await expect(
+        service.getPromedioHistoricoPorDepartamento('ANTIOQUIA')
+      ).rejects.toThrow('DB fail');
+    });
+  });
+
+  describe('getTopMunicipiosPorDepartamento', () => {
+    it('debería retornar el top de municipios de un departamento', async () => {
+      const mockResponse = [
+        { municipio: 'MEDELLIN', promedio: 280, total_estudiantes: 100 },
+        { municipio: 'ENVIGADO', promedio: 275, total_estudiantes: 80 },
+      ];
+
+      mockResultadoModel.aggregate.mockResolvedValue(mockResponse);
+
+      const result = await service.getTopMunicipiosPorDepartamento('ANTIOQUIA', 2);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalled();
+    });
+
+    it('debería retornar arreglo vacío', async () => {
+      mockResultadoModel.aggregate.mockResolvedValue([]);
+
+      const result = await service.getTopMunicipiosPorDepartamento('ANTIOQUIA', 5);
+
+      expect(result).toEqual([]);
+    });
+
+    it('debería lanzar InternalServerErrorException si falla sync', async () => {
+      mockResultadoModel.aggregate.mockImplementation(() => {
+        throw new Error('DB error');
+      });
+
+      await expect(
+        service.getTopMunicipiosPorDepartamento('ANTIOQUIA', 5)
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('debería propagar error async', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(
+        Promise.reject(new Error('DB fail'))
+      );
+
+      await expect(
+        service.getTopMunicipiosPorDepartamento('ANTIOQUIA', 5)
+      ).rejects.toThrow('DB fail');
+    });
+  });
+
+
+  describe('getBottomMunicipiosPorDepartamento', () => {
+    it('debería retornar el bottom de municipios de un departamento', async () => {
+      const mockResponse = [
+        { municipio: 'MUNICIPIO_X', promedio: 210, total_estudiantes: 50 },
+        { municipio: 'MUNICIPIO_Y', promedio: 215, total_estudiantes: 60 },
+      ];
+
+      mockResultadoModel.aggregate.mockResolvedValue(mockResponse);
+
+      const result = await service.getBottomMunicipiosDepartamento('ANTIOQUIA', 2);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalled();
+    });
+
+    it('debería retornar arreglo vacío', async () => {
+      mockResultadoModel.aggregate.mockResolvedValue([]);
+
+      const result = await service.getBottomMunicipiosDepartamento('ANTIOQUIA', 5);
+
+      expect(result).toEqual([]);
+    });
+
+    it('debería lanzar InternalServerErrorException si falla sync', async () => {
+      mockResultadoModel.aggregate.mockImplementation(() => {
+        throw new Error('DB error');
+      });
+
+      await expect(
+        service.getBottomMunicipiosDepartamento('ANTIOQUIA', 5)
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('debería propagar error async', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(
+        Promise.reject(new Error('DB fail'))
+      );
+
+      await expect(
+        service.getBottomMunicipiosDepartamento('ANTIOQUIA', 5)
+      ).rejects.toThrow('DB fail');
+    });
+  });
+
+
 
 });

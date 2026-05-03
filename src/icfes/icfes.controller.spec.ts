@@ -22,6 +22,9 @@ describe('IcfesController', () => {
     promedioPorEdad: jest.fn(),
     topDepartamentos: jest.fn(),
     promedioPorAno: jest.fn(),
+    getPromedioHistoricoPorDepartamento: jest.fn(),
+    getTopMunicipiosPorDepartamento: jest.fn(),
+    getBottomMunicipiosDepartamento: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -351,6 +354,108 @@ describe('IcfesController', () => {
 
       expect(result).toEqual(mockResponse);
       expect(mockIcfesService.topDepartamentos).toHaveBeenCalledWith(5);
+    });
+  });
+
+  describe('promedioDepartamentoAgrupado', () => {
+    it('debería retornar el promedio anual de un departamento', async () => {
+      const dto = { departamento: 'ANTIOQUIA' };
+      const mockResponse = [
+        { year: 2018, promedio: 265.4 },
+        { year: 2019, promedio: 270.1 },
+      ];
+
+      mockCacheService.remember.mockResolvedValue(mockResponse);
+
+      const result = await controller.promedioDepartamentoAgrupado(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockCacheService.remember).toHaveBeenCalledWith(
+        'promedio_anual_departamento',
+        { dto },
+        expect.any(Function)
+      );
+    });
+
+    it('debería ejecutar la función del servicio al no haber cache', async () => {
+      const dto = { departamento: 'ANTIOQUIA' };
+      const mockResponse = [{ year: 2018, promedio: 265.4 }];
+
+      mockCacheService.remember.mockImplementation(async (_tipo, _params, fn) => fn());
+      mockIcfesService.getPromedioHistoricoPorDepartamento.mockResolvedValue(mockResponse);
+
+      const result = await controller.promedioDepartamentoAgrupado(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.getPromedioHistoricoPorDepartamento).toHaveBeenCalledWith('ANTIOQUIA');
+    });
+  });
+
+  describe('topMunicipiosDepartamento', () => {
+    it('debería retornar el top de municipios por departamento', async () => {
+      const dto = { departamento: 'ANTIOQUIA', limit: 5 };
+      const mockResponse = [
+        { municipio: 'MEDELLIN', promedio: 280 },
+      ];
+
+      mockCacheService.remember.mockResolvedValue(mockResponse);
+
+      const result = await controller.topMunicipiosDepartamento(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockCacheService.remember).toHaveBeenCalledWith(
+        'top_municipios_departamento',
+        { dto },
+        expect.any(Function)
+      );
+    });
+
+    it('debería ejecutar el servicio si no hay cache', async () => {
+      const dto = { departamento: 'ANTIOQUIA', limit: 5 };
+      const mockResponse = [{ municipio: 'MEDELLIN', promedio: 280 }];
+
+      mockCacheService.remember.mockImplementation(async (_k, _p, fn) => fn());
+      mockIcfesService.getTopMunicipiosPorDepartamento.mockResolvedValue(mockResponse);
+
+      const result = await controller.topMunicipiosDepartamento(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.getTopMunicipiosPorDepartamento)
+        .toHaveBeenCalledWith(dto.departamento, dto.limit);
+    });
+  });
+
+  describe('bottomMunicipiosDepartamento', () => {
+    it('debería retornar el bottom de municipios por departamento', async () => {
+      const dto = { departamento: 'ANTIOQUIA', limit: 5 };
+      const mockResponse = [
+        { municipio: 'MUNICIPIO_X', promedio: 210 },
+      ];
+
+      mockCacheService.remember.mockResolvedValue(mockResponse);
+
+      const result = await controller.bottomMunicipiosDepartamento(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockCacheService.remember).toHaveBeenCalledWith(
+        'bottom_municipios_departamento',
+        { dto },
+        expect.any(Function)
+      );
+    });
+
+    it('debería ejecutar el servicio si no hay cache', async () => {
+      const dto = { departamento: 'ANTIOQUIA', limit: 5 };
+      const mockResponse = [{ municipio: 'MUNICIPIO_X', promedio: 210 }];
+
+      mockCacheService.remember.mockImplementation(async (_k, _p, fn) => fn());
+      mockIcfesService.getBottomMunicipiosDepartamento.mockResolvedValue(mockResponse);
+
+      const result = await controller.bottomMunicipiosDepartamento(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.getBottomMunicipiosDepartamento)
+        .toHaveBeenCalledWith(dto.departamento, dto.limit);
     });
   });
 });

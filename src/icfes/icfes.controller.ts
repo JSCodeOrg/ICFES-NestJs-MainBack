@@ -4,6 +4,8 @@ import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PromedioAnualDto } from './dto/promedioAnualDto';
 import { CacheService } from '../cache/cache.service';
 import { TopDepartamentos } from './dto/topDepartamentos';
+import { Departamento } from './dto/departamentoDto';
+import { TopMunicipiosDepartamento } from './dto/TopMunicipiosDepartamento';
 
 @Controller('icfes')
 export class IcfesController {
@@ -26,8 +28,8 @@ export class IcfesController {
 
   @Get('promedio-anual')
   @ApiOperation({
-    summary: 'Promedio anual del examen por año',
-    description: 'Devuelve el promedio del año al recibir el año',
+    summary: 'Promedio anual del examen según el año',
+    description: 'Devuelve el promedio nacional al recibir el año',
   })
   @ApiResponse({ status: 200, description: 'Promedio del año seleccionado' })
   @ApiResponse({ status: 400, description: 'El año solicitado no está contenido dentro del intérvalo 2014-2022' })
@@ -134,6 +136,53 @@ export class IcfesController {
       'top_departamentos',
       { limit: parsedLimit },
       () => this.icfesService.topDepartamentos(parsedLimit)
+    );
+  }
+
+  @Get('promedio-anual-departamento')
+  @ApiOperation({ summary: 'Promedio anual de un departamento', description: 'Devuelve el promedio de un departamento agrupado por todos los años' })
+  promedioDepartamentoAgrupado(@Query() dto: Departamento) {
+    return this.cacheService.remember(
+      'promedio_anual_departamento',
+      { dto },
+      () => this.icfesService.getPromedioHistoricoPorDepartamento(dto.departamento)
+    )
+  }
+
+  @Get('distribucion-puntaje-departamento')
+  @ApiOperation({ summary: 'Distribución del puntaje por departamento', description: 'Devuelve la cantidad de estudiantes por categoría de puntaje en un departamento' })
+  distribucionPuntajeDepartamento(@Query() dto: Departamento) {
+    return this.cacheService.remember(
+      'distribucion_puntaje_departamento',
+      { dto },
+      () => this.icfesService.distribucionPuntajeGlobalPorDepartamento(dto.departamento)
+    );
+  }
+
+  @Get('top-municipios-departamento')
+  @ApiOperation({ summary: 'Top municipios de un departamento', description: 'Devuelve el top específico de los municipios de un departamento' })
+  topMunicipiosDepartamento(@Query() dto: TopMunicipiosDepartamento) {
+    return this.cacheService.remember(
+      'top_municipios_departamento',
+      { dto },
+      () => this.icfesService.getTopMunicipiosPorDepartamento(dto.departamento, dto.limit)
+    )
+  }
+
+  @Get('bottom-municipios-departamento')
+  @ApiOperation({
+    summary: 'Bottom municipios de un departamento',
+    description: 'Devuelve los municipios con menor promedio en un departamento',
+  })
+  bottomMunicipiosDepartamento(@Query() dto: TopMunicipiosDepartamento) {
+    return this.cacheService.remember(
+      'bottom_municipios_departamento',
+      { dto },
+      () =>
+        this.icfesService.getBottomMunicipiosDepartamento(
+          dto.departamento,
+          dto.limit
+        )
     );
   }
 

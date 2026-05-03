@@ -20,6 +20,8 @@ describe('IcfesController', () => {
     promedioZonal: jest.fn(),
     topMunicipios: jest.fn(),
     promedioPorEdad: jest.fn(),
+    topDepartamentos: jest.fn(),
+    promedioPorAno: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -63,6 +65,18 @@ describe('IcfesController', () => {
         expect.any(Function)
       );
     });
+
+    it('debería ejecutar la función del servicio al no haber cache', async () => {
+      const mockResponse = [{ key: '2018', values: [60, 40] }];
+
+      mockCacheService.remember.mockImplementation(async (_tipo, _params, fn) => fn());
+      mockIcfesService.distribucionGeneroPorAnio.mockResolvedValue(mockResponse);
+
+      const result = await controller.distribucionGenero();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.distribucionGeneroPorAnio).toHaveBeenCalled();
+    });
   });
 
   describe('promedioAnual', () => {
@@ -81,7 +95,21 @@ describe('IcfesController', () => {
         expect.any(Function)
       );
     });
+
+    it('debería ejecutar la función del servicio al no haber cache', async () => {
+      const dto = { ano: 2018 };
+      const mockResponse = [{ promedio: 250.283083 }];
+
+      mockCacheService.remember.mockImplementation(async (_tipo, _params, fn) => fn());
+      mockIcfesService.promedioAnual.mockResolvedValue(mockResponse);
+
+      const result = await controller.promedioAnual(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.promedioAnual).toHaveBeenCalledWith(dto);
+    });
   });
+
   describe('promedioNacional', () => {
     it('debería retornar el promedio nacional', async () => {
       const mockResponse = [{ promedio: 255.5 }];
@@ -96,6 +124,18 @@ describe('IcfesController', () => {
         {},
         expect.any(Function)
       );
+    });
+
+    it('debería ejecutar la función del servicio al no haber cache', async () => {
+      const mockResponse = [{ promedio: 255.5 }];
+
+      mockCacheService.remember.mockImplementation(async (_tipo, _params, fn) => fn());
+      mockIcfesService.promedioNacional.mockResolvedValue(mockResponse);
+
+      const result = await controller.promedioNacional();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.promedioNacional).toHaveBeenCalled();
     });
   });
 
@@ -114,7 +154,20 @@ describe('IcfesController', () => {
         expect.any(Function)
       );
     });
+
+    it('debería ejecutar la función del servicio al no haber cache', async () => {
+      const mockResponse = [{ total: 3000000 }];
+
+      mockCacheService.remember.mockImplementation(async (_tipo, _params, fn) => fn());
+      mockIcfesService.totalRegistros.mockResolvedValue(mockResponse);
+
+      const result = await controller.totalRegistros();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.totalRegistros).toHaveBeenCalled();
+    });
   });
+
   describe('comparacionColegios', () => {
     it('debería retornar la comparación entre colegios', async () => {
       const mockResponse = [
@@ -145,7 +198,20 @@ describe('IcfesController', () => {
         expect.any(Function)
       );
     });
+
+    it('debería ejecutar la función del servicio al no haber cache', async () => {
+      const mockResponse = [{ tipo_colegio: 'OFICIAL', data: [] }];
+
+      mockCacheService.remember.mockImplementation(async (_tipo, _params, fn) => fn());
+      mockIcfesService.comparacionColegios.mockResolvedValue(mockResponse);
+
+      const result = await controller.comparacionColegios();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.comparacionColegios).toHaveBeenCalled();
+    });
   });
+
   describe('promedioDepartamento', () => {
     it('debería llamar al servicio de promedio por departamento', async () => {
       const mockResponse = [
@@ -179,6 +245,18 @@ describe('IcfesController', () => {
         {},
         expect.any(Function)
       );
+    });
+
+    it('debería ejecutar la función del servicio al no haber cache', async () => {
+      const mockResponse = [{ zona: 'URBANO', promedio: 268.3 }];
+
+      mockCacheService.remember.mockImplementation(async (_tipo, _params, fn) => fn());
+      mockIcfesService.promedioZonal.mockResolvedValue(mockResponse);
+
+      const result = await controller.promedioZonal();
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.promedioZonal).toHaveBeenCalled();
     });
   });
 
@@ -261,6 +339,18 @@ describe('IcfesController', () => {
         { limit: 5 },
         expect.any(Function)
       );
+    });
+
+    it('debería ejecutar la función del servicio al no haber cache', async () => {
+      const mockResponse = [{ departamento: 'BOGOTÁ', promedio: 285.3, total_estudiantes: 10000 }];
+
+      mockCacheService.remember.mockImplementation(async (_tipo, _params, fn) => fn());
+      mockIcfesService.topDepartamentos.mockResolvedValue(mockResponse);
+
+      const result = await controller.topDepartamentos({ limit: 5 });
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.topDepartamentos).toHaveBeenCalledWith(5);
     });
   });
 });

@@ -3,12 +3,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Resultado } from './schema/icfes.schema';
 import { Model } from 'mongoose';
 import { PromedioAnualDto } from './dto/promedioAnualDto';
+import { CacheService } from '../cache/cache.service';
 
 @Injectable()
 export class IcfesService {
   constructor(
     @InjectModel(Resultado.name)
     private readonly resultadoModel: Model<Resultado>,
+    private readonly cacheService: CacheService,
   ) { }
 
   async distribucionGeneroPorAnio() {
@@ -41,7 +43,7 @@ export class IcfesService {
             key: { $toString: '$_id' },
             values: {
               $map: {
-                input: ['M', 'F'], // 👈 ORDEN FIJO (importante)
+                input: ['M', 'F'],
                 as: 'g',
                 in: {
                   $let: {
@@ -169,22 +171,37 @@ export class IcfesService {
         },
         {
           $group: {
-            _id: '$COLE_NATURALEZA',
+            _id: {
+              tipo: '$COLE_NATURALEZA',
+              anio: '$ANIO_EXAMEN',
+            },
             promedio: { $avg: '$PUNT_GLOBAL' },
-            total: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            tipo: '$_id.tipo',
+            key: { $toString: '$_id.anio' },
+            value: { $round: ['$promedio', 1] },
+          },
+        },
+        {
+          $group: {
+            _id: '$tipo',
+            data: {
+              $push: {
+                key: '$key',
+                value: '$value',
+              },
+            },
           },
         },
         {
           $project: {
             _id: 0,
             tipo_colegio: '$_id',
-            promedio: 1,
-            total: 1,
-          },
-        },
-        {
-          $sort: {
-            tipo_colegio: 1,
+            data: 1,
           },
         },
       ]);
@@ -198,19 +215,19 @@ export class IcfesService {
     return this.resultadoModel.aggregate([
       {
         $group: {
-          _id: '$ESTU_DEPTO_RESIDE', // 👈 agrupamos por departamento
-          promedio: { $avg: '$PUNT_GLOBAL' }, // 👈 calculamos promedio
-          total_estudiantes: { $sum: 1 }, // (extra útil)
+          _id: '$ESTU_DEPTO_RESIDE', 
+          promedio: { $avg: '$PUNT_GLOBAL' }, 
+          total_estudiantes: { $sum: 1 }, 
         },
       },
       {
-        $sort: { promedio: -1 }, // 👈 opcional: ordenar de mayor a menor
+        $sort: { promedio: -1 },
       },
       {
         $project: {
           _id: 0,
           departamento: '$_id',
-          promedio: { $round: ['$promedio', 2] }, // redondear (opcional)
+          promedio: { $round: ['$promedio', 2] }, 
           total_estudiantes: 1,
         },
       },
@@ -227,7 +244,7 @@ export class IcfesService {
       },
       {
         $group: {
-          _id: '$COLE_AREA_UBICACION', // 👈 agrupación por zona
+          _id: '$COLE_AREA_UBICACION', 
           promedio: { $avg: '$PUNT_GLOBAL' },
           total_estudiantes: { $sum: 1 },
         },
@@ -256,16 +273,16 @@ export class IcfesService {
       },
       {
         $group: {
-          _id: '$ESTU_MCPIO_RESIDE', // 👈 agrupamos por municipio
+          _id: '$ESTU_MCPIO_RESIDE', 
           promedio: { $avg: '$PUNT_GLOBAL' },
           total_estudiantes: { $sum: 1 },
         },
       },
       {
-        $sort: { promedio: -1 }, // 👈 de mayor a menor
+        $sort: { promedio: -1 }, 
       },
       {
-        $limit: 15, // 👈 TOP 15
+        $limit: 15, 
       },
       {
         $project: {
@@ -288,13 +305,13 @@ export class IcfesService {
       },
       {
         $group: {
-          _id: '$EDAD', // 👈 agrupamos por edad
+          _id: '$EDAD', 
           promedio: { $avg: '$PUNT_GLOBAL' },
           total_estudiantes: { $sum: 1 },
         },
       },
       {
-        $sort: { _id: 1 }, // 👈 ordenar por edad (ascendente)
+        $sort: { _id: 1 }, 
       },
       {
         $project: {
@@ -306,4 +323,71 @@ export class IcfesService {
       },
     ]);
   }
+
+  async promedioPorAno() {
+    return await this.resultadoModel.aggregate([
+      {
+        $match: {
+          PUNT_GLOBAL: { $ne: null },
+          ANIO_EXAMEN: { $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: '$ANIO_EXAMEN',
+          promedio: { $avg: '$PUNT_GLOBAL' },
+          total_estudiantes: { $sum: 1 }, 
+        },
+      },
+      {
+        $sort: { _id: 1 }, 
+      },
+      {
+        $project: {
+          _id: 0,
+          ano: '$_id',
+          promedio: { $round: ['$promedio', 2] },
+          total_estudiantes: 1,
+        },
+      },
+    ]);
+  }
+
+  async topDepartamentos(limit: number = 5) {
+    try {
+      return this.resultadoModel.aggregate([
+        {
+          $match: {
+            ESTU_DEPTO_RESIDE: { $ne: null },
+            PUNT_GLOBAL: { $ne: null },
+          },
+        },
+        {
+          $group: {
+            _id: '$ESTU_DEPTO_RESIDE',
+            promedio: { $avg: '$PUNT_GLOBAL' },
+            total_estudiantes: { $sum: 1 },
+          },
+        },
+        {
+          $sort: { promedio: -1 },
+        },
+        {
+          $limit: limit,
+        },
+        {
+          $project: {
+            _id: 0,
+            departamento: '$_id',
+            promedio: { $round: ['$promedio', 2] },
+            total_estudiantes: 1,
+          },
+        },
+      ]);
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+
 }

@@ -216,18 +216,28 @@ describe('IcfesController', () => {
   });
 
   describe('promedioDepartamento', () => {
-    it('debería llamar al servicio de promedio por departamento', async () => {
+    it('debería usar cacheService y llamar al service correctamente', async () => {
+      const dto = { departamento: 'ANTIOQUIA' };
+
       const mockResponse = [
-        { departamento: 'ANTIOQUIA', promedio: 265.4 },
-        { departamento: 'CUNDINAMARCA', promedio: 258.1 },
+        { departamento: 'ANTIOQUIA', promedio: 265.4, total_estudiantes: 100, ranking: 1 },
       ];
+
+      mockCacheService.remember.mockImplementation(async (_key, _dto, callback) => {
+        return callback();
+      });
 
       mockIcfesService.promedioDepartamentos.mockResolvedValue(mockResponse);
 
-      const result = await controller.promedioDepartameto();
+      const result = await controller.promedioDepartamento(dto);
 
       expect(result).toEqual(mockResponse);
-      expect(mockIcfesService.promedioDepartamentos).toHaveBeenCalled();
+      expect(mockCacheService.remember).toHaveBeenCalledWith(
+        'promedio_departamento',
+        dto,
+        expect.any(Function)
+      );
+      expect(mockIcfesService.promedioDepartamentos).toHaveBeenCalledWith(dto.departamento);
     });
   });
 

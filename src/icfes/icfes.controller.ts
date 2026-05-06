@@ -88,8 +88,8 @@ export class IcfesController {
   }
 
   @Get('promedio-departamento')
-  @ApiOperation({ summary: 'Promedio por departamentos', description: 'Devuelve el promedio de cada departamentos' })
-  getPromedioDepartamentos(@Query() dto: PromedioDepartamentoDto) {
+  @ApiOperation({ summary: 'Promedio por departamentos', description: 'Devuelve el promedio del departamento solicitado' })
+  promedioDepartamento(@Query() dto: PromedioDepartamentoDto) {
     return this.cacheService.remember(
       'promedio_departamento',
       dto,

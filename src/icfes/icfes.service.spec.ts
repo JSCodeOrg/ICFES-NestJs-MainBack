@@ -267,9 +267,10 @@ describe('IcfesService', () => {
   describe('promedioDepartamentos', () => {
     it('retorna los datos correctamente', async () => {
       const data = [
-        { departamento: 'VALLE', promedio: 260, total_estudiantes: 100 },
+        { departamento: 'VALLE', promedio: 260, total_estudiantes: 100, ranking: 1 },
       ];
-      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      mockResultadoModel.aggregate.mockResolvedValue(data);
 
       const result = await service.promedioDepartamentos();
 
@@ -277,16 +278,15 @@ describe('IcfesService', () => {
     });
 
     it('retorna arreglo vacío', async () => {
-      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve([]));
+      mockResultadoModel.aggregate.mockResolvedValue([]);
 
       const result = await service.promedioDepartamentos();
 
       expect(result).toEqual([]);
     });
-
     it('propaga error de BD', async () => {
       const dbError = new Error('DB fail');
-      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(dbError));
+      mockResultadoModel.aggregate.mockRejectedValue(dbError);
 
       await expect(service.promedioDepartamentos()).rejects.toThrow('DB fail');
     });

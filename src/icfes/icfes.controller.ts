@@ -6,6 +6,7 @@ import { CacheService } from '../cache/cache.service';
 import { TopDepartamentos } from './dto/topDepartamentos';
 import { Departamento } from './dto/departamentoDto';
 import { TopMunicipiosDepartamento } from './dto/TopMunicipiosDepartamento';
+import { PromedioDepartamentoDto } from './dto/promedioDepartamentoDto';
 
 @Controller('icfes')
 export class IcfesController {
@@ -88,10 +89,13 @@ export class IcfesController {
 
   @Get('promedio-departamento')
   @ApiOperation({ summary: 'Promedio por departamentos', description: 'Devuelve el promedio de cada departamentos' })
-  promedioDepartameto() {
-    return this.icfesService.promedioDepartamentos();
+  getPromedioDepartamentos(@Query() dto: PromedioDepartamentoDto) {
+    return this.cacheService.remember(
+      'promedio_departamento',
+      dto,
+      () => this.icfesService.promedioDepartamentos(dto.departamento)
+    );
   }
-
   @Get('promedio-zona')
   @ApiOperation({ summary: 'Promedio por zona urbana o rural', description: 'Devuelve el promedio por zona urbana o rural' })
   promedioZonal() {

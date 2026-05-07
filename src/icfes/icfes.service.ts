@@ -210,9 +210,14 @@ export class IcfesService {
     }
   }
 
-  async promedioDepartamentos() {
-
-    return this.resultadoModel.aggregate([
+  async promedioDepartamentos(departamento?: string) {
+    const resultados = await this.resultadoModel.aggregate([
+      {
+        $match: {
+          PUNT_GLOBAL: { $ne: null },
+          ESTU_DEPTO_RESIDE: { $ne: null },
+        },
+      },
       {
         $group: {
           _id: '$ESTU_DEPTO_RESIDE',
@@ -224,14 +229,29 @@ export class IcfesService {
         $sort: { promedio: -1 },
       },
       {
+        $setWindowFields: {
+          sortBy: { promedio: -1 },
+          output: {
+            ranking: { $denseRank: {} },
+          },
+        },
+      },
+      {
         $project: {
           _id: 0,
           departamento: '$_id',
           promedio: { $round: ['$promedio', 2] },
           total_estudiantes: 1,
+          ranking: 1,
         },
       },
     ]);
+
+    if (departamento) {
+      return resultados.filter(r => r.departamento === departamento);
+    }
+
+    return resultados;
   }
 
   async promedioZonal() {

@@ -19,12 +19,12 @@ export class User {
   password: string;
 
   @Prop({
-    required: true,
+    required: false,
   })
   firstname: string;
 
   @Prop({
-    required: true,
+    required: false,
   })
   lastname: string;
 

@@ -57,9 +57,6 @@ describe('UserController', () => {
     const dto: CreateUserDto = {
       email: 'test@test.com',
       password: '12345678',
-      firstname: 'Juan',
-      lastname: 'Perez',
-      role: 'consultor',
     };
 
     it('registra un usuario y retorna el resultado del servicio', async () => {
@@ -81,9 +78,6 @@ describe('UserController', () => {
       expect(mockUserService.register).toHaveBeenCalledWith(
         expect.objectContaining<Partial<CreateUserDto>>({
           email: dto.email,
-          firstname: dto.firstname,
-          lastname: dto.lastname,
-          role: dto.role,
         }),
       );
     });

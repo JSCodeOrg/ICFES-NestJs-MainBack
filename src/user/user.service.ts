@@ -10,7 +10,7 @@ export class UserService {
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<User>,
-  ) { }
+  ) {}
 
   async register(userData: CreateUserDto) {
     const exists = await this.userModel.findOne({ email: userData.email });
@@ -30,9 +30,7 @@ export class UserService {
     const user = new this.userModel({
       email: userData.email,
       password: hashedPassword, //
-      firstname: userData.firstname,
-      lastname: userData.lastname,
-      role: userData.role || 'consultor',
+      role: 'consultor',
       estado: true,
     });
 
@@ -51,16 +49,7 @@ export class UserService {
     try {
       const skip = (page - 1) * limit;
 
-      const [users, total] = await Promise.all([
-        this.userModel
-          .find({ estado: true })
-          .select('-password')
-          .skip(skip)
-          .limit(limit)
-          .lean(),
-
-        this.userModel.countDocuments({ estado: true }),
-      ]);
+      const [users, total] = await Promise.all([this.userModel.find({ estado: true }).select('-password').skip(skip).limit(limit).lean(), this.userModel.countDocuments({ estado: true })]);
       return {
         data: users,
         meta: {
@@ -75,7 +64,7 @@ export class UserService {
   }
   async updateUserRol(id: string, role: string) {
     try {
-      const user = await this.userModel.findById(id); 
+      const user = await this.userModel.findById(id);
       if (!user) {
         throw new ConflictException('Usuario no encontrado.');
       }

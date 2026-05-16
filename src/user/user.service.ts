@@ -1,48 +1,63 @@
-import { ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from '../auth/schemas/user.schema';
+import { VerificationCode } from '../auth/schemas/verification-code.schema';
 import { CreateUserDto } from './dto/createUserDto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { MailService } from '../email/mail.service';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UserService {
   constructor(
-    @InjectModel(User.name)
-    private readonly userModel: Model<User>,
+    @InjectModel(User.name) private readonly userModel: Model<User>,
+    @InjectModel(VerificationCode.name) private readonly verificationCodeModel: Model<VerificationCode>,
+    private readonly mailService: MailService,
   ) {}
 
   async register(userData: CreateUserDto) {
     const exists = await this.userModel.findOne({ email: userData.email });
+    if (exists) throw new ConflictException('Este email ya se encuentra registrado.');
 
-    if (exists) {
-      throw new ConflictException('Este email ya se encuentra registrado.');
-    }
+    await this.verificationCodeModel.deleteMany({ email: userData.email });
 
-    if (!userData.password) {
-      throw new ConflictException('La contraseña es requerida.');
-    }
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedPassword = await bcrypt.hash(userData.password, 10); // ← hashear aquí
 
-    //Encriptación de la contraseña
+    await this.verificationCodeModel.create({
+      email: userData.email,
+      code,
+      hashedPassword,
+    });
 
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    await this.mailService.sendVerificationCode(userData.email, code);
+
+    return { message: 'Código de verificación enviado. Revisa tu correo.' };
+  }
+
+  async verifyEmail(dto: VerifyEmailDto) {
+    const record = await this.verificationCodeModel.findOne({ email: dto.email });
+
+    if (!record) throw new BadRequestException('No hay un código pendiente para este correo.');
+    if (record.code !== dto.code) throw new BadRequestException('Código incorrecto.');
+
+    await this.verificationCodeModel.deleteOne({ _id: record._id });
 
     const user = new this.userModel({
-      email: userData.email,
-      password: hashedPassword, //
+      email: record.email,
+      password: record.hashedPassword,
       role: 'consultor',
       estado: true,
     });
 
-    try {
-      await user.save();
-    } catch (error) {
-      throw new InternalServerErrorException(error);
-    }
-
-    return {
-      message: 'Usuario registrado correctamente.',
-    };
+    await user.save();
+    return { message: 'Correo verificado. Usuario registrado correctamente.' };
   }
 
   async getAllUsers(page: number = 1, limit: number = 10) {

@@ -7,6 +7,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Public } from '../auth/jwt.decorator';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+
 
 @Controller('user')
 export class UserController {
@@ -18,6 +20,12 @@ export class UserController {
   @ApiResponse({ status: 409, description: 'Este email ya se encuentra registrado.' })
   register(@Body() body: CreateUserDto) {
     return this.userService.register(body);
+  }
+
+  @Post('verify-email')
+  @Public()
+  verifyEmail(@Body() body: VerifyEmailDto) {
+    return this.userService.verifyEmail(body);
   }
 
   @Get('admin')

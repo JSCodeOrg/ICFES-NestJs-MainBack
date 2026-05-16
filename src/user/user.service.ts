@@ -25,6 +25,10 @@ export class UserService {
     const exists = await this.userModel.findOne({ email: userData.email });
     if (exists) throw new ConflictException('Este email ya se encuentra registrado.');
 
+    if (!userData.password || userData.password.trim() === '') {
+      throw new ConflictException('La contraseña es requerida.');
+    }
+
     await this.verificationCodeModel.deleteMany({ email: userData.email });
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();

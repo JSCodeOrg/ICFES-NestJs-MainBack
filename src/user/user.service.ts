@@ -81,6 +81,7 @@ export class UserService {
       throw new InternalServerErrorException(error);
     }
   }
+  
   async updateUserRol(id: string, role: string) {
     try {
       const user = await this.userModel.findById(id);

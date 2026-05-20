@@ -32,10 +32,7 @@ export class AuthService {
   }
 
   async login(credentials: { email: string; password: string }) {
-    const user = await this.validateUser(
-      credentials.email,
-      credentials.password,
-    );
+    const user = await this.validateUser(credentials.email, credentials.password);
 
     if (!user) {
       throw new UnauthorizedException();
@@ -54,5 +51,28 @@ export class AuthService {
     return {
       access_token: this.jwtService.sign(payload),
     };
+  }
+
+  async getMe(token: string) {
+    try {
+      const payload = this.jwtService.verify(token);
+      if (payload) {
+        const user = await this.userModel.findById(payload.id);
+
+        if (!user) {
+          throw new UnauthorizedException('Token no reconocido o no válido.');
+        }
+
+        return {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+          firstname: user.firstname ?? '',
+          lastname: user.lastname ?? '',
+        };
+      }
+    } catch (error) {
+      throw new UnauthorizedException('Token inválido');
+    }
   }
 }

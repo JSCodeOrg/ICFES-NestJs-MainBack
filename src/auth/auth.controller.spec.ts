@@ -11,6 +11,7 @@ describe('AuthController', () => {
   const mockAuthService = {
     validateUser: jest.fn<Promise<{ id: number } | null>, [string, string]>(),
     login: jest.fn<Promise<{ access_token: string }>, [LoginDto]>(),
+    getMe: jest.fn(),
   };
 
   type MockResponse = Pick<Response, 'cookie'>;
@@ -82,5 +83,46 @@ describe('AuthController', () => {
 
     expect(mockAuthService.login).not.toHaveBeenCalled();
     expect(res.cookie).not.toHaveBeenCalled();
+  });
+
+  it('debe retornar usuario si el token es válido', async () => {
+    const req = {
+      cookies: {
+        token: 'valid-token',
+      },
+    } as any;
+
+    const userMock = {
+      id: '1',
+      email: 'test@test.com',
+      role: 'admin',
+    };
+
+    mockAuthService.getMe.mockResolvedValue(userMock);
+
+    const result = await controller.checkSession(req);
+
+    expect(mockAuthService.getMe).toHaveBeenCalledWith('valid-token');
+    expect(result).toEqual(userMock);
+  });
+
+  it('debe lanzar UnauthorizedException si no hay token', async () => {
+    const req = {
+      cookies: {},
+    } as any;
+
+    await expect(controller.checkSession(req)).rejects.toThrow(
+      UnauthorizedException,
+    );
+
+    expect(mockAuthService.getMe).not.toHaveBeenCalled();
+  });
+
+  it('debe lanzar UnauthorizedException si cookies no existen', async () => {
+    const req = {} as any;
+
+    await expect(controller.checkSession(req)).rejects.toThrow(
+      UnauthorizedException,
+    );
   });
 });

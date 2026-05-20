@@ -34,7 +34,6 @@ describe('IcfesService', () => {
     remember: jest.fn(),
   };
 
-
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
@@ -47,7 +46,7 @@ describe('IcfesService', () => {
         {
           provide: CacheService,
           useValue: mockCacheService,
-        }
+        },
       ],
     }).compile();
 
@@ -266,9 +265,7 @@ describe('IcfesService', () => {
   });
   describe('promedioDepartamentos', () => {
     it('retorna los datos correctamente', async () => {
-      const data = [
-        { departamento: 'VALLE', promedio: 260, total_estudiantes: 100, ranking: 1 },
-      ];
+      const data = [{ departamento: 'VALLE', promedio: 260, total_estudiantes: 100, ranking: 1 }];
 
       mockResultadoModel.aggregate.mockResolvedValue(data);
 
@@ -293,9 +290,7 @@ describe('IcfesService', () => {
   });
   describe('promedioZonal', () => {
     it('retorna los datos correctamente', async () => {
-      const data = [
-        { zona: 'URBANO', promedio: 270, total_estudiantes: 80 },
-      ];
+      const data = [{ zona: 'URBANO', promedio: 270, total_estudiantes: 80 }];
       mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
 
       const result = await service.promedioZonal();
@@ -320,9 +315,7 @@ describe('IcfesService', () => {
   });
   describe('topMunicipios', () => {
     it('retorna los datos correctamente', async () => {
-      const data = [
-        { municipio: 'TULUA', promedio: 280, total_estudiantes: 50 },
-      ];
+      const data = [{ municipio: 'TULUA', promedio: 280, total_estudiantes: 50 }];
       mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
 
       const result = await service.topMunicipios();
@@ -347,9 +340,7 @@ describe('IcfesService', () => {
   });
   describe('promedioPorEdad', () => {
     it('retorna los datos correctamente', async () => {
-      const data = [
-        { edad: 17, promedio: 250, total_estudiantes: 30 },
-      ];
+      const data = [{ edad: 17, promedio: 250, total_estudiantes: 30 }];
       mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
 
       const result = await service.promedioPorEdad();
@@ -398,12 +389,10 @@ describe('IcfesService', () => {
 
     it('debería lanzar InternalServerErrorException si falla el aggregate', async () => {
       mockResultadoModel.aggregate.mockImplementation(() => {
-        throw new Error('DB error')
+        throw new Error('DB error');
       });
 
-      await expect(service.topDepartamentos(5)).rejects.toThrow(
-        InternalServerErrorException
-      );
+      await expect(service.topDepartamentos(5)).rejects.toThrow(InternalServerErrorException);
     });
   });
   describe('getPromedioHistoricoPorDepartamento', () => {
@@ -434,17 +423,13 @@ describe('IcfesService', () => {
         throw new Error('DB error');
       });
 
-      await expect(
-        service.getPromedioHistoricoPorDepartamento('ANTIOQUIA')
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.getPromedioHistoricoPorDepartamento('ANTIOQUIA')).rejects.toThrow(InternalServerErrorException);
     });
 
     it('debería propagar error de BD sin envolver', async () => {
       mockResultadoModel.aggregate.mockReturnValue(Promise.reject(new Error('DB fail')));
 
-      await expect(
-        service.getPromedioHistoricoPorDepartamento('ANTIOQUIA')
-      ).rejects.toThrow('DB fail');
+      await expect(service.getPromedioHistoricoPorDepartamento('ANTIOQUIA')).rejects.toThrow('DB fail');
     });
   });
 
@@ -476,22 +461,15 @@ describe('IcfesService', () => {
         throw new Error('DB error');
       });
 
-      await expect(
-        service.getTopMunicipiosPorDepartamento('ANTIOQUIA', 5)
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.getTopMunicipiosPorDepartamento('ANTIOQUIA', 5)).rejects.toThrow(InternalServerErrorException);
     });
 
     it('debería propagar error async', async () => {
-      mockResultadoModel.aggregate.mockReturnValue(
-        Promise.reject(new Error('DB fail'))
-      );
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(new Error('DB fail')));
 
-      await expect(
-        service.getTopMunicipiosPorDepartamento('ANTIOQUIA', 5)
-      ).rejects.toThrow('DB fail');
+      await expect(service.getTopMunicipiosPorDepartamento('ANTIOQUIA', 5)).rejects.toThrow('DB fail');
     });
   });
-
 
   describe('getBottomMunicipiosPorDepartamento', () => {
     it('debería retornar el bottom de municipios de un departamento', async () => {
@@ -521,22 +499,141 @@ describe('IcfesService', () => {
         throw new Error('DB error');
       });
 
-      await expect(
-        service.getBottomMunicipiosDepartamento('ANTIOQUIA', 5)
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.getBottomMunicipiosDepartamento('ANTIOQUIA', 5)).rejects.toThrow(InternalServerErrorException);
     });
 
     it('debería propagar error async', async () => {
-      mockResultadoModel.aggregate.mockReturnValue(
-        Promise.reject(new Error('DB fail'))
-      );
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(new Error('DB fail')));
 
-      await expect(
-        service.getBottomMunicipiosDepartamento('ANTIOQUIA', 5)
-      ).rejects.toThrow('DB fail');
+      await expect(service.getBottomMunicipiosDepartamento('ANTIOQUIA', 5)).rejects.toThrow('DB fail');
     });
   });
 
+  describe('getMetricasMunicipiosPorDepartamento', () => {
+    it('debería retornar las métricas de municipios de un departamento', async () => {
+      const mockResponse = [
+        { municipio: 'MEDELLIN', promedio: 280.5, total_estudiantes: 1500, desviacion: 12.3 },
+        { municipio: 'BELLO', promedio: 265.8, total_estudiantes: 900, desviacion: 10.7 },
+      ];
+      mockResultadoModel.aggregate.mockResolvedValue(mockResponse);
 
+      const result = await service.getMetricasMunicipiosPorDepartamento('ANTIOQUIA');
 
+      expect(result).toEqual(mockResponse);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalled();
+    });
+
+    it('debería retornar arreglo vacío', async () => {
+      mockResultadoModel.aggregate.mockResolvedValue([]);
+
+      const result = await service.getMetricasMunicipiosPorDepartamento('ANTIOQUIA');
+
+      expect(result).toEqual([]);
+    });
+
+    it('debería lanzar InternalServerErrorException si falla sync', async () => {
+      mockResultadoModel.aggregate.mockImplementation(() => {
+        throw new Error('DB error');
+      });
+
+      await expect(service.getMetricasMunicipiosPorDepartamento('ANTIOQUIA')).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('debería propagar error async', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(new Error('DB fail')));
+
+      await expect(service.getMetricasMunicipiosPorDepartamento('ANTIOQUIA')).rejects.toThrow(InternalServerErrorException);
+    });
+  });
+
+  describe('getDistribucionEstratoDepartamento', () => {
+    it('debería retornar la distribución socioeconómica de un departamento', async () => {
+      const mockResponse = [
+        { key: 'Estrato 1', value: 33.33 },
+        { key: 'Estrato 2', value: 46.67 },
+        { key: 'Estrato 3', value: 20.0 },
+      ];
+      mockResultadoModel.aggregate.mockResolvedValue(mockResponse);
+
+      const result = await service.getDistribucionEstratoDepartamento('ANTIOQUIA');
+
+      expect(result).toEqual(mockResponse);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalled();
+    });
+
+    it('debería retornar arreglo vacío', async () => {
+      mockResultadoModel.aggregate.mockResolvedValue([]);
+
+      const result = await service.getDistribucionEstratoDepartamento('ANTIOQUIA');
+
+      expect(result).toEqual([]);
+    });
+
+    it('debería lanzar InternalServerErrorException si falla sync', async () => {
+      mockResultadoModel.aggregate.mockImplementation(() => {
+        throw new Error('DB error');
+      });
+
+      await expect(service.getDistribucionEstratoDepartamento('ANTIOQUIA')).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('debería propagar error async', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(new Error('DB fail')));
+
+      await expect(service.getDistribucionEstratoDepartamento('ANTIOQUIA')).rejects.toThrow('DB fail');
+    });
+  });
+
+  describe('getComparacionAccesoTecnologico', () => {
+    it('debería retornar la comparación de acceso tecnológico entre dos departamentos', async () => {
+      const mockAggregate = [
+        { _id: 'ANTIOQUIA', internet: 0.755, computador: 0.601 },
+        { _id: 'CUNDINAMARCA', internet: 0.682, computador: 0.554 },
+      ];
+      mockResultadoModel.aggregate.mockResolvedValue(mockAggregate);
+
+      const result = await service.getComparacionAccesoTecnologico('ANTIOQUIA', 'CUNDINAMARCA');
+
+      expect(result[0]).toEqual({ key: 'Internet', values: [75.5, 68.2] });
+      expect(result[1].key).toBe('Computador');
+      expect(result[1].values[0]).toBeCloseTo(60.1, 5);
+      expect(result[1].values[1]).toBeCloseTo(55.4, 5);
+    });
+
+    it('debería retornar valores en 0 si un departamento no tiene datos', async () => {
+      mockResultadoModel.aggregate.mockResolvedValue([{ _id: 'ANTIOQUIA', internet: 0.5, computador: 0.4 }]);
+
+      const result = await service.getComparacionAccesoTecnologico('ANTIOQUIA', 'CUNDINAMARCA');
+
+      expect(result).toEqual([
+        { key: 'Internet', values: [50, 0] },
+        { key: 'Computador', values: [40, 0] },
+      ]);
+    });
+
+    it('debería retornar arreglo vacío si no hay datos', async () => {
+      mockResultadoModel.aggregate.mockResolvedValue([]);
+
+      const result = await service.getComparacionAccesoTecnologico('ANTIOQUIA', 'CUNDINAMARCA');
+
+      expect(result).toEqual([
+        { key: 'Internet', values: [0, 0] },
+        { key: 'Computador', values: [0, 0] },
+      ]);
+    });
+
+    it('debería lanzar InternalServerErrorException si falla sync', async () => {
+      mockResultadoModel.aggregate.mockImplementation(() => {
+        throw new Error('DB error');
+      });
+
+      await expect(service.getComparacionAccesoTecnologico('ANTIOQUIA', 'CUNDINAMARCA')).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('debería propagar error async', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(new Error('DB fail')));
+
+      await expect(service.getComparacionAccesoTecnologico('ANTIOQUIA', 'CUNDINAMARCA')).rejects.toThrow('DB fail');
+    });
+  });
 });

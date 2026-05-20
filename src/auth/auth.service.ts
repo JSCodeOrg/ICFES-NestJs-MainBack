@@ -10,7 +10,7 @@ export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private jwtService: JwtService,
-  ) { }
+  ) {}
 
   async validateUser(email: string, password: string) {
     const user = await this.userModel.findOne({ email }).exec();
@@ -32,10 +32,7 @@ export class AuthService {
   }
 
   async login(credentials: { email: string; password: string }) {
-    const user = await this.validateUser(
-      credentials.email,
-      credentials.password,
-    );
+    const user = await this.validateUser(credentials.email, credentials.password);
 
     if (!user) {
       throw new UnauthorizedException();
@@ -63,19 +60,19 @@ export class AuthService {
         const name = await this.userModel.findById(payload.id);
 
         if (!name) {
-          throw new UnauthorizedException("Token no reconocido o no válido.")
+          throw new UnauthorizedException('Token no reconocido o no válido.');
         }
 
-        console.log(payload)
+        console.log(payload);
 
         return {
           id: payload.id,
           email: payload.email,
-          role: payload.role
-        }
+          role: payload.role,
+        };
       }
     } catch (error) {
-      throw new UnauthorizedException('Token inválido')
+      throw new UnauthorizedException('Token inválido');
     }
   }
 }

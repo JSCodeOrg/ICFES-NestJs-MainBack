@@ -11,7 +11,7 @@ export class IcfesService {
     @InjectModel(Resultado.name)
     private readonly resultadoModel: Model<Resultado>,
     private readonly cacheService: CacheService,
-  ) { }
+  ) {}
 
   async distribucionGeneroPorAnio() {
     try {
@@ -64,10 +64,7 @@ export class IcfesService {
                     in: {
                       $multiply: [
                         {
-                          $divide: [
-                            { $ifNull: ['$$match.cantidad', 0] },
-                            '$total',
-                          ],
+                          $divide: [{ $ifNull: ['$$match.cantidad', 0] }, '$total'],
                         },
                         100,
                       ],
@@ -248,7 +245,7 @@ export class IcfesService {
     ]);
 
     if (departamento) {
-      return resultados.filter(r => r.departamento === departamento);
+      return resultados.filter((r) => r.departamento === departamento);
     }
 
     return resultados;
@@ -419,15 +416,15 @@ export class IcfesService {
         },
         {
           $group: {
-            _id: "$ANIO_EXAMEN",
-            promedio: { $avg: "$PUNT_GLOBAL" },
+            _id: '$ANIO_EXAMEN',
+            promedio: { $avg: '$PUNT_GLOBAL' },
           },
         },
         {
           $project: {
             _id: 0,
-            year: "$_id",
-            promedio: { $round: ["$promedio", 2] },
+            year: '$_id',
+            promedio: { $round: ['$promedio', 2] },
           },
         },
         {
@@ -437,9 +434,7 @@ export class IcfesService {
 
       return result;
     } catch (error) {
-      throw new InternalServerErrorException(
-        "Error al obtener el promedio histórico del departamento"
-      );
+      throw new InternalServerErrorException('Error al obtener el promedio histórico del departamento');
     }
   }
 
@@ -468,10 +463,7 @@ export class IcfesService {
     ]);
   }
 
-  async getTopMunicipiosPorDepartamento(
-    departamento: string,
-    limit: number
-  ) {
+  async getTopMunicipiosPorDepartamento(departamento: string, limit: number) {
     try {
       const result = this.resultadoModel.aggregate([
         {
@@ -481,15 +473,15 @@ export class IcfesService {
         },
         {
           $group: {
-            _id: "$ESTU_MCPIO_RESIDE",
-            promedio: { $avg: "$PUNT_GLOBAL" },
+            _id: '$ESTU_MCPIO_RESIDE',
+            promedio: { $avg: '$PUNT_GLOBAL' },
           },
         },
         {
           $project: {
             _id: 0,
-            municipio: "$_id",
-            promedio: { $round: ["$promedio", 2] },
+            municipio: '$_id',
+            promedio: { $round: ['$promedio', 2] },
           },
         },
         {
@@ -502,9 +494,7 @@ export class IcfesService {
 
       return result;
     } catch (error) {
-      throw new InternalServerErrorException(
-        "Error al obtener el top de municipios"
-      );
+      throw new InternalServerErrorException('Error al obtener el top de municipios');
     }
   }
 
@@ -518,15 +508,15 @@ export class IcfesService {
         },
         {
           $group: {
-            _id: "$ESTU_MCPIO_RESIDE",
-            promedio: { $avg: "$PUNT_GLOBAL" },
+            _id: '$ESTU_MCPIO_RESIDE',
+            promedio: { $avg: '$PUNT_GLOBAL' },
           },
         },
         {
           $project: {
             _id: 0,
-            municipio: "$_id",
-            promedio: { $round: ["$promedio", 2] },
+            municipio: '$_id',
+            promedio: { $round: ['$promedio', 2] },
           },
         },
         {
@@ -539,9 +529,7 @@ export class IcfesService {
 
       return result;
     } catch (error) {
-      throw new InternalServerErrorException(
-        "Error al obtener el bottom de municipios del departamento"
-      );
+      throw new InternalServerErrorException('Error al obtener el bottom de municipios del departamento');
     }
   }
 
@@ -555,19 +543,19 @@ export class IcfesService {
         },
         {
           $group: {
-            _id: "$ESTU_MCPIO_RESIDE",
-            promedio: { $avg: "$PUNT_GLOBAL" },
+            _id: '$ESTU_MCPIO_RESIDE',
+            promedio: { $avg: '$PUNT_GLOBAL' },
             total_estudiantes: { $sum: 1 },
-            desviacion: { $stdDevPop: "$PUNT_GLOBAL" },
+            desviacion: { $stdDevPop: '$PUNT_GLOBAL' },
           },
         },
         {
           $project: {
             _id: 0,
-            municipio: "$_id",
-            promedio: { $round: ["$promedio", 2] },
+            municipio: '$_id',
+            promedio: { $round: ['$promedio', 2] },
             total_estudiantes: 1,
-            desviacion: { $round: ["$desviacion", 2] },
+            desviacion: { $round: ['$desviacion', 2] },
           },
         },
         {
@@ -577,9 +565,153 @@ export class IcfesService {
 
       return result;
     } catch (error) {
-      throw new InternalServerErrorException(
-        "Error al obtener métricas de municipios"
-      );
+      throw new InternalServerErrorException('Error al obtener métricas de municipios');
+    }
+  }
+
+  async getDistribucionEstratoDepartamento(departamento: string) {
+    try {
+      return this.resultadoModel.aggregate([
+        {
+          $match: {
+            ESTU_DEPTO_RESIDE: departamento,
+            FAMI_ESTRATOVIVIENDA: {
+              $in: ['1', '2', '3', '4', '5', '6'],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$FAMI_ESTRATOVIVIENDA',
+            cantidad: { $sum: 1 },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$cantidad' },
+            estratos: {
+              $push: {
+                estrato: '$_id',
+                cantidad: '$cantidad',
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            data: {
+              $map: {
+                input: ['1', '2', '3', '4', '5', '6'],
+                as: 'estrato',
+                in: {
+                  key: {
+                    $concat: ['Estrato ', '$$estrato'],
+                  },
+                  value: {
+                    $let: {
+                      vars: {
+                        match: {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: '$estratos',
+                                as: 'item',
+                                cond: {
+                                  $eq: ['$$item.estrato', '$$estrato'],
+                                },
+                              },
+                            },
+                            0,
+                          ],
+                        },
+                      },
+                      in: {
+                        $multiply: [
+                          {
+                            $divide: [
+                              {
+                                $ifNull: ['$$match.cantidad', 0],
+                              },
+                              '$total',
+                            ],
+                          },
+                          100,
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          $unwind: '$data',
+        },
+        {
+          $replaceRoot: {
+            newRoot: '$data',
+          },
+        },
+      ]);
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async getComparacionAccesoTecnologico(departamentoA: string, departamentoB: string) {
+    try {
+      const result = await this.resultadoModel.aggregate([
+        {
+          $match: {
+            ESTU_DEPTO_RESIDE: {
+              $in: [departamentoA, departamentoB],
+            },
+
+            FAMI_TIENEINTERNET: {
+              $in: [0, 1],
+            },
+
+            FAMI_TIENECOMPUTADOR: {
+              $in: [0, 1],
+            },
+          },
+        },
+
+        {
+          $group: {
+            _id: '$ESTU_DEPTO_RESIDE',
+
+            internet: {
+              $avg: '$FAMI_TIENEINTERNET',
+            },
+
+            computador: {
+              $avg: '$FAMI_TIENECOMPUTADOR',
+            },
+          },
+        },
+      ]);
+
+      const deptoA = result.find((d) => d._id === departamentoA);
+
+      const deptoB = result.find((d) => d._id === departamentoB);
+
+      return [
+        {
+          key: 'Internet',
+          values: [(deptoA?.internet ?? 0) * 100, (deptoB?.internet ?? 0) * 100],
+        },
+
+        {
+          key: 'Computador',
+          values: [(deptoA?.computador ?? 0) * 100, (deptoB?.computador ?? 0) * 100],
+        },
+      ];
+    } catch (error) {
+      throw new InternalServerErrorException(error);
     }
   }
 }

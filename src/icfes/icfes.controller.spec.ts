@@ -7,8 +7,8 @@ describe('IcfesController', () => {
   let controller: IcfesController;
 
   const mockCacheService = {
-    remember: jest.fn()
-  }
+    remember: jest.fn(),
+  };
 
   const mockIcfesService = {
     distribucionGeneroPorAnio: jest.fn(),
@@ -25,6 +25,9 @@ describe('IcfesController', () => {
     getPromedioHistoricoPorDepartamento: jest.fn(),
     getTopMunicipiosPorDepartamento: jest.fn(),
     getBottomMunicipiosDepartamento: jest.fn(),
+    getMetricasMunicipiosPorDepartamento: jest.fn(),
+    getDistribucionEstratoDepartamento: jest.fn(),
+    getComparacionAccesoTecnologico: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -38,8 +41,8 @@ describe('IcfesController', () => {
         },
         {
           provide: CacheService,
-          useValue: mockCacheService
-        }
+          useValue: mockCacheService,
+        },
       ],
     }).compile();
 
@@ -62,11 +65,7 @@ describe('IcfesController', () => {
       const result = await controller.distribucionGenero();
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'distribucion_genero',
-        {},
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('distribucion_genero', {}, expect.any(Function));
     });
 
     it('debería ejecutar la función del servicio al no haber cache', async () => {
@@ -92,11 +91,7 @@ describe('IcfesController', () => {
       const result = await controller.promedioAnual(dto);
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'promedio_anual',
-        dto,
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('promedio_anual', dto, expect.any(Function));
     });
 
     it('debería ejecutar la función del servicio al no haber cache', async () => {
@@ -122,11 +117,7 @@ describe('IcfesController', () => {
       const result = await controller.promedioNacional();
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'promedio_nacional',
-        {},
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('promedio_nacional', {}, expect.any(Function));
     });
 
     it('debería ejecutar la función del servicio al no haber cache', async () => {
@@ -151,11 +142,7 @@ describe('IcfesController', () => {
       const result = await controller.totalRegistros();
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'total_registros',
-        {},
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('total_registros', {}, expect.any(Function));
     });
 
     it('debería ejecutar la función del servicio al no haber cache', async () => {
@@ -195,11 +182,7 @@ describe('IcfesController', () => {
       const result = await controller.comparacionColegios();
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'comparacion_colegios',
-        {},
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('comparacion_colegios', {}, expect.any(Function));
     });
 
     it('debería ejecutar la función del servicio al no haber cache', async () => {
@@ -219,9 +202,7 @@ describe('IcfesController', () => {
     it('debería usar cacheService y llamar al service correctamente', async () => {
       const dto = { departamento: 'ANTIOQUIA' };
 
-      const mockResponse = [
-        { departamento: 'ANTIOQUIA', promedio: 265.4, total_estudiantes: 100, ranking: 1 },
-      ];
+      const mockResponse = [{ departamento: 'ANTIOQUIA', promedio: 265.4, total_estudiantes: 100, ranking: 1 }];
 
       mockCacheService.remember.mockImplementation(async (_key, _dto, callback) => {
         return callback();
@@ -232,11 +213,7 @@ describe('IcfesController', () => {
       const result = await controller.promedioDepartamento(dto);
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'promedio_departamento',
-        dto,
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('promedio_departamento', dto, expect.any(Function));
       expect(mockIcfesService.promedioDepartamentos).toHaveBeenCalledWith(dto.departamento);
     });
   });
@@ -253,11 +230,7 @@ describe('IcfesController', () => {
       const result = await controller.promedioZonal();
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'promedio_zona',
-        {},
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('promedio_zona', {}, expect.any(Function));
     });
 
     it('debería ejecutar la función del servicio al no haber cache', async () => {
@@ -318,28 +291,18 @@ describe('IcfesController', () => {
       const result = await controller.topDepartamentos({ limit: 5 });
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'top_departamentos',
-        { limit: 5 },
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('top_departamentos', { limit: 5 }, expect.any(Function));
     });
 
     it('debería usar el limit recibido por query', async () => {
-      const mockResponse = [
-        { departamento: 'BOGOTÁ', promedio: 285.3, total_estudiantes: 10000 },
-      ];
+      const mockResponse = [{ departamento: 'BOGOTÁ', promedio: 285.3, total_estudiantes: 10000 }];
 
       mockCacheService.remember.mockResolvedValue(mockResponse);
 
       const result = await controller.topDepartamentos({ limit: 1 });
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'top_departamentos',
-        { limit: 1 },
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('top_departamentos', { limit: 1 }, expect.any(Function));
     });
 
     it('debería usar limit 5 si el valor recibido no es válido', async () => {
@@ -347,11 +310,7 @@ describe('IcfesController', () => {
 
       await controller.topDepartamentos({ limit: NaN });
 
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'top_departamentos',
-        { limit: 5 },
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('top_departamentos', { limit: 5 }, expect.any(Function));
     });
 
     it('debería ejecutar la función del servicio al no haber cache', async () => {
@@ -380,11 +339,7 @@ describe('IcfesController', () => {
       const result = await controller.promedioDepartamentoAgrupado(dto);
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'promedio_anual_departamento',
-        { dto },
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('promedio_anual_departamento', { dto }, expect.any(Function));
     });
 
     it('debería ejecutar la función del servicio al no haber cache', async () => {
@@ -404,20 +359,14 @@ describe('IcfesController', () => {
   describe('topMunicipiosDepartamento', () => {
     it('debería retornar el top de municipios por departamento', async () => {
       const dto = { departamento: 'ANTIOQUIA', limit: 5 };
-      const mockResponse = [
-        { municipio: 'MEDELLIN', promedio: 280 },
-      ];
+      const mockResponse = [{ municipio: 'MEDELLIN', promedio: 280 }];
 
       mockCacheService.remember.mockResolvedValue(mockResponse);
 
       const result = await controller.topMunicipiosDepartamento(dto);
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'top_municipios_departamento',
-        { dto },
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('top_municipios_departamento', { dto }, expect.any(Function));
     });
 
     it('debería ejecutar el servicio si no hay cache', async () => {
@@ -430,28 +379,21 @@ describe('IcfesController', () => {
       const result = await controller.topMunicipiosDepartamento(dto);
 
       expect(result).toEqual(mockResponse);
-      expect(mockIcfesService.getTopMunicipiosPorDepartamento)
-        .toHaveBeenCalledWith(dto.departamento, dto.limit);
+      expect(mockIcfesService.getTopMunicipiosPorDepartamento).toHaveBeenCalledWith(dto.departamento, dto.limit);
     });
   });
 
   describe('bottomMunicipiosDepartamento', () => {
     it('debería retornar el bottom de municipios por departamento', async () => {
       const dto = { departamento: 'ANTIOQUIA', limit: 5 };
-      const mockResponse = [
-        { municipio: 'MUNICIPIO_X', promedio: 210 },
-      ];
+      const mockResponse = [{ municipio: 'MUNICIPIO_X', promedio: 210 }];
 
       mockCacheService.remember.mockResolvedValue(mockResponse);
 
       const result = await controller.bottomMunicipiosDepartamento(dto);
 
       expect(result).toEqual(mockResponse);
-      expect(mockCacheService.remember).toHaveBeenCalledWith(
-        'bottom_municipios_departamento',
-        { dto },
-        expect.any(Function)
-      );
+      expect(mockCacheService.remember).toHaveBeenCalledWith('bottom_municipios_departamento', { dto }, expect.any(Function));
     });
 
     it('debería ejecutar el servicio si no hay cache', async () => {
@@ -464,8 +406,94 @@ describe('IcfesController', () => {
       const result = await controller.bottomMunicipiosDepartamento(dto);
 
       expect(result).toEqual(mockResponse);
-      expect(mockIcfesService.getBottomMunicipiosDepartamento)
-        .toHaveBeenCalledWith(dto.departamento, dto.limit);
+      expect(mockIcfesService.getBottomMunicipiosDepartamento).toHaveBeenCalledWith(dto.departamento, dto.limit);
+    });
+  });
+
+  describe('metricasMunicipiosDepartamento', () => {
+    it('debería retornar las métricas de municipios por departamento', async () => {
+      const dto = { departamento: 'ANTIOQUIA' };
+      const mockResponse = [{ municipio: 'MEDELLIN', promedio: 280, totalEstudiantes: 1500, desviacionEstandar: 12.5 }];
+      mockCacheService.remember.mockResolvedValue(mockResponse);
+
+      const result = await controller.metricasMunicipiosDepartamento(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockCacheService.remember).toHaveBeenCalledWith('metricas_municipios_departamento', { dto }, expect.any(Function));
+    });
+
+    it('debería ejecutar el servicio si no hay cache', async () => {
+      const dto = { departamento: 'ANTIOQUIA' };
+      const mockResponse = [{ municipio: 'MEDELLIN', promedio: 280, totalEstudiantes: 1500, desviacionEstandar: 12.5 }];
+      mockCacheService.remember.mockImplementation(async (_k, _p, fn) => fn());
+      mockIcfesService.getMetricasMunicipiosPorDepartamento.mockResolvedValue(mockResponse);
+
+      const result = await controller.metricasMunicipiosDepartamento(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.getMetricasMunicipiosPorDepartamento).toHaveBeenCalledWith(dto.departamento);
+    });
+  });
+
+  describe('distribucionSocioeconomica', () => {
+    it('debería retornar la distribución socioeconómica de un departamento', async () => {
+      const dto = { departamento: 'ANTIOQUIA' };
+      const mockResponse = [
+        { estrato: 1, total: 500, porcentaje: 33.33 },
+        { estrato: 2, total: 700, porcentaje: 46.67 },
+      ];
+      mockCacheService.remember.mockResolvedValue(mockResponse);
+
+      const result = await controller.distribucionSocioeconomica(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockCacheService.remember).toHaveBeenCalledWith('distribucion_socioeconomica_departamento', { dto }, expect.any(Function));
+    });
+
+    it('debería ejecutar el servicio si no hay cache', async () => {
+      const dto = { departamento: 'ANTIOQUIA' };
+      const mockResponse = [
+        { estrato: 1, total: 500, porcentaje: 33.33 },
+        { estrato: 2, total: 700, porcentaje: 46.67 },
+      ];
+      mockCacheService.remember.mockImplementation(async (_k, _p, fn) => fn());
+      mockIcfesService.getDistribucionEstratoDepartamento.mockResolvedValue(mockResponse);
+
+      const result = await controller.distribucionSocioeconomica(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.getDistribucionEstratoDepartamento).toHaveBeenCalledWith(dto.departamento);
+    });
+  });
+
+  describe('comparacionAccesoTecnologico', () => {
+    it('debería retornar la comparación de acceso tecnológico', async () => {
+      const dto = { departamentoA: 'ANTIOQUIA', departamentoB: 'CUNDINAMARCA' };
+      const mockResponse = [
+        { key: 'Internet', values: [75.5, 68.2] },
+        { key: 'Computador', values: [60.1, 55.4] },
+      ];
+      mockCacheService.remember.mockResolvedValue(mockResponse);
+
+      const result = await controller.comparacionAccesoTecnologico(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockCacheService.remember).toHaveBeenCalledWith('comparacion_acceso_tecnologico', { dto }, expect.any(Function));
+    });
+
+    it('debería ejecutar el servicio si no hay cache', async () => {
+      const dto = { departamentoA: 'ANTIOQUIA', departamentoB: 'CUNDINAMARCA' };
+      const mockResponse = [
+        { key: 'Internet', values: [75.5, 68.2] },
+        { key: 'Computador', values: [60.1, 55.4] },
+      ];
+      mockCacheService.remember.mockImplementation(async (_k, _p, fn) => fn());
+      mockIcfesService.getComparacionAccesoTecnologico.mockResolvedValue(mockResponse);
+
+      const result = await controller.comparacionAccesoTecnologico(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.getComparacionAccesoTecnologico).toHaveBeenCalledWith(dto.departamentoA, dto.departamentoB);
     });
   });
 });

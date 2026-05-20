@@ -47,7 +47,25 @@ export class AuthController {
       throw new UnauthorizedException('No autenticado');
     }
 
-    console.log(req.cookies);
     return this.authService.getMe(token);
+  }
+
+  @Post('logout')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Cierre de sesión',
+    description: 'Cierra la sesión del usuario',
+  })
+  @ApiResponse({
+    status: 204,
+    description: 'Sesión cerrada correctamente',
+  })
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
   }
 }

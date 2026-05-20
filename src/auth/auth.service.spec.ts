@@ -189,8 +189,8 @@ describe('AuthService', () => {
       id: payload.id,
       email: payload.email,
       role: payload.role,
-      firstname: '', 
-      lastname: '',
+      firstname: 'Jairo Andres',  
+      lastname: 'Gomez Cardona',
     });
   });
 

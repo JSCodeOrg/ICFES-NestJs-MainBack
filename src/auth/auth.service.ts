@@ -60,18 +60,18 @@ export class AuthService {
     try {
       const payload = this.jwtService.verify(token);
       if (payload) {
-        const name = await this.userModel.findById(payload.id);
+        const user = await this.userModel.findById(payload.id);
 
-        if (!name) {
+        if (!user) {
           throw new UnauthorizedException("Token no reconocido o no válido.")
         }
 
-        console.log(payload)
-
         return {
-          id: payload.id,
-          email: payload.email,
-          role: payload.role
+          id: user._id,
+          email: user.email,
+          role: user.role,
+          firstname: user.firstname ?? "",
+          lastname: user.lastname ?? "",
         }
       }
     } catch (error) {

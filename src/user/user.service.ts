@@ -12,13 +12,23 @@ import { CreateUserDto } from './dto/createUserDto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { MailService } from '../email/mail.service';
 import * as bcrypt from 'bcryptjs';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdatePasswordDto } from './dto/update-password.dto';
+import { NotificationService } from 'src/notificaciones/notification.service';
+import { JwtService } from '@nestjs/jwt';
+import { Notification } from 'src/notificaciones/schemas/notification.schema';
+
+
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(VerificationCode.name) private readonly verificationCodeModel: Model<VerificationCode>,
+    @InjectModel(Notification.name) private readonly notificationModel: Model<Notification>,
     private readonly mailService: MailService,
+    private readonly notificationService: NotificationService,
+    private readonly jwtService: JwtService,
   ) {}
 
   async register(userData: CreateUserDto) {
@@ -61,7 +71,29 @@ export class UserService {
     });
 
     await user.save();
-    return { message: 'Correo verificado. Usuario registrado correctamente.' };
+    await this.notificationService.createMany(user._id, [
+
+      {
+        title: '¡Bienvenido al dashboard icfes!',
+        message: 'Nos alegra tenerte aquí. Explora todas las funcionalidades disponibles.',
+      },
+      {
+        title: 'Completa tu perfil',
+        message: 'Agrega tu nombre y apellido en la seccion del perfil para completar el registro..',
+      },
+    ]);
+
+    const access_token = this.jwtService.sign({
+      email: user.email,
+      id: user._id,
+      role: user.role,
+    });
+
+    const saved = await this.notificationModel.find({ userId: user._id });
+    console.log("Notificaciones guardadas ", saved.length);
+
+
+    return { access_token, message: 'Correo verificado. Usuario registrado correctamente.' };
   }
 
   async getAllUsers(page: number = 1, limit: number = 10) {
@@ -96,5 +128,30 @@ export class UserService {
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
+  }
+
+  async updateProfile(id: string, dto:UpdateProfileDto) {
+    const user = await this.userModel.findById(id);
+    if (!user) throw new ConflictException("Usuario no encontrado");
+
+    user.firstname = dto.firstname;
+    user.lastname = dto.lastname;
+    await user.save();
+
+    return { message: 'Perfil actualizado correctamente'};
+  }
+
+  async updatePassword(id: string, dto: UpdatePasswordDto) {
+    const user = await this.userModel.findById(id);
+    if(!user) throw new ConflictException('Usuario no encontrado');
+
+    const isMatch = await bcrypt.compare(dto.currentPassword, user.password);
+    if(!isMatch) throw new BadRequestException('La contraseña actual es incorrecta');
+
+    user.password = await bcrypt.hash(dto.newPassword, 10);
+    await user.save();
+
+    return { message: 'Contraseña actualizada correctamente'}
+
   }
 }

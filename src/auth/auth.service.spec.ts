@@ -5,7 +5,6 @@ import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { Types } from 'mongoose';
-import { verify } from 'crypto';
 
 jest.mock('bcryptjs', () => ({
   compare: jest.fn(),

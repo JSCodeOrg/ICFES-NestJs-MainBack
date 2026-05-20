@@ -8,9 +8,7 @@ module.exports = {
   collectCoverage: true,
   coverageDirectory: '../coverage',
   coverageReporters: ['html', 'text'],
-
   collectCoverageFrom: ['**/*.service.ts', '**/*.controller.ts'],
-
   coverageThreshold: {
     global: {
       branches: 70,
@@ -19,6 +17,6 @@ module.exports = {
       statements: 80,
     },
   },
-
   testEnvironment: 'node',
+  moduleNameMapper: { '^src/(.*)$': '<rootDir>/$1' },
 };

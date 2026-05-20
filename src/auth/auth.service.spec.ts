@@ -5,7 +5,6 @@ import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { Types } from 'mongoose';
-import { verify } from 'crypto';
 
 jest.mock('bcryptjs', () => ({
   compare: jest.fn(),
@@ -174,6 +173,8 @@ describe('AuthService', () => {
       _id: '1',
       email: 'test@test.com',
       role: 'admin',
+      firstname: 'Jairo Andres',  
+      lastname: 'Gomez Cardona',
     };
 
     mockJwtService.verify.mockReturnValue(payload);
@@ -188,6 +189,8 @@ describe('AuthService', () => {
       id: payload.id,
       email: payload.email,
       role: payload.role,
+      firstname: 'Jairo Andres',  
+      lastname: 'Gomez Cardona',
     });
   });
 

@@ -18,7 +18,7 @@ export class MailService {
   async sendVerificationCode(email: string, code: string): Promise<void> {
     try {
       await this.transporter.sendMail({
-        from: `"Tu App" <${process.env.MAIL_USER}>`,
+        from: `"Dashboard Icfes" <${process.env.MAIL_USER}>`,
         to: email,
         subject: 'Código de verificación',
         html: `

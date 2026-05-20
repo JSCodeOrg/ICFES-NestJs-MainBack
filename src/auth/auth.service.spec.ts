@@ -173,6 +173,8 @@ describe('AuthService', () => {
       _id: '1',
       email: 'test@test.com',
       role: 'admin',
+      firstname: 'Jairo Andres',  
+      lastname: 'Gomez Cardona',
     };
 
     mockJwtService.verify.mockReturnValue(payload);
@@ -187,6 +189,8 @@ describe('AuthService', () => {
       id: payload.id,
       email: payload.email,
       role: payload.role,
+      firstname: '', 
+      lastname: '',
     });
   });
 

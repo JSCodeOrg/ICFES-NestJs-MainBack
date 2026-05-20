@@ -10,6 +10,9 @@ import { UserService } from './user.service';
 import { User } from '../auth/schemas/user.schema';
 import { VerificationCode } from '../auth/schemas/verification-code.schema';
 import { MailService } from '../email/mail.service';
+import { NotificationService } from 'src/notificaciones/notification.service';
+import { Notification } from 'src/notificaciones/schemas/notification.schema';
+import { JwtService } from '@nestjs/jwt';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -23,7 +26,13 @@ let createdUserData: any;
 const mockUserSave = jest.fn();
 const mockUserModel = jest.fn().mockImplementation((dto: any) => {
   createdUserData = dto;
-  return { ...dto, save: mockUserSave };
+  return {
+    ...dto,
+    _id: 'mock-user-id',
+    email: dto.email,
+    role: dto.role,
+    save: mockUserSave,
+  };
 }) as any;
 
 mockUserModel.find = jest.fn();
@@ -43,6 +52,24 @@ mockVerificationCodeModel.findOne = jest.fn();
 mockVerificationCodeModel.deleteMany = jest.fn().mockResolvedValue({});
 mockVerificationCodeModel.deleteOne = jest.fn().mockResolvedValue({});
 mockVerificationCodeModel.create = jest.fn();
+
+// ─── Notification Model Mock ──────────────────────────────────────────────────
+
+const mockNotificationModel = {
+  find: jest.fn().mockResolvedValue([]),
+};
+
+// ─── NotificationService Mock ─────────────────────────────────────────────────
+
+const mockNotificationService = {
+  createMany: jest.fn().mockResolvedValue({}),
+};
+
+// ─── JwtService Mock ──────────────────────────────────────────────────────────
+
+const mockJwtService = {
+  sign: jest.fn().mockReturnValue('mock-token'),
+};
 
 // ─── MailService Mock ─────────────────────────────────────────────────────────
 
@@ -78,8 +105,20 @@ describe('UserService', () => {
           useValue: mockVerificationCodeModel,
         },
         {
+          provide: getModelToken(Notification.name),
+          useValue: mockNotificationModel,
+        },
+        {
           provide: MailService,
           useValue: mockMailService,
+        },
+        {
+          provide: NotificationService,
+          useValue: mockNotificationService,
+        },
+        {
+          provide: JwtService,
+          useValue: mockJwtService,
         },
       ],
     }).compile();
@@ -120,7 +159,6 @@ describe('UserService', () => {
 
     it('crea el registro de verificación con email, code y hashedPassword', async () => {
       await service.register(baseDto);
-
       expect(mockVerificationCodeModel.create).toHaveBeenCalledTimes(1);
       const createArg = mockVerificationCodeModel.create.mock.calls[0][0];
       expect(createArg.email).toBe(baseDto.email);
@@ -130,7 +168,6 @@ describe('UserService', () => {
 
     it('hashea la contraseña antes de guardarla en el código de verificación', async () => {
       await service.register(baseDto);
-
       const createArg = mockVerificationCodeModel.create.mock.calls[0][0];
       expect(createArg.hashedPassword).not.toBe(baseDto.password);
       const isMatch = await bcrypt.compare(baseDto.password, createArg.hashedPassword);
@@ -139,7 +176,6 @@ describe('UserService', () => {
 
     it('envía el código de verificación al email correcto', async () => {
       await service.register(baseDto);
-
       const createArg = mockVerificationCodeModel.create.mock.calls[0][0];
       expect(mockMailService.sendVerificationCode).toHaveBeenCalledWith(
         baseDto.email,
@@ -149,7 +185,6 @@ describe('UserService', () => {
 
     it('lanza ConflictException si el email ya está registrado', async () => {
       mockUserModel.findOne.mockResolvedValue({ email: baseDto.email });
-
       await expect(service.register(baseDto)).rejects.toThrow(ConflictException);
       await expect(service.register(baseDto)).rejects.toThrow(
         'Este email ya se encuentra registrado.',
@@ -158,7 +193,6 @@ describe('UserService', () => {
 
     it('no envía email si el email ya está registrado', async () => {
       mockUserModel.findOne.mockResolvedValue({ email: baseDto.email });
-
       await expect(service.register(baseDto)).rejects.toThrow(ConflictException);
       expect(mockMailService.sendVerificationCode).not.toHaveBeenCalled();
     });
@@ -176,7 +210,6 @@ describe('UserService', () => {
       await expect(
         service.register({ ...baseDto, password: '' }),
       ).rejects.toThrow(ConflictException);
-
       expect(mockVerificationCodeModel.create).not.toHaveBeenCalled();
     });
   });
@@ -197,18 +230,21 @@ describe('UserService', () => {
       mockVerificationCodeModel.findOne.mockResolvedValue(mockRecord);
       mockVerificationCodeModel.deleteOne.mockResolvedValue({});
       mockUserSave.mockResolvedValue({});
+      mockNotificationService.createMany.mockResolvedValue({});
+      mockJwtService.sign.mockReturnValue('mock-token');
+      mockNotificationModel.find.mockResolvedValue([]);
     });
 
-    it('retorna mensaje de éxito cuando el código es correcto', async () => {
+    it('retorna access_token y mensaje de éxito cuando el código es correcto', async () => {
       const result = await service.verifyEmail(verifyDto);
       expect(result).toEqual({
+        access_token: 'mock-token',
         message: 'Correo verificado. Usuario registrado correctamente.',
       });
     });
 
     it('lanza BadRequestException si no hay código pendiente para el correo', async () => {
       mockVerificationCodeModel.findOne.mockResolvedValue(null);
-
       await expect(service.verifyEmail(verifyDto)).rejects.toThrow(BadRequestException);
       await expect(service.verifyEmail(verifyDto)).rejects.toThrow(
         'No hay un código pendiente para este correo.',
@@ -231,7 +267,7 @@ describe('UserService', () => {
       });
     });
 
-    it('crea el usuario con role "consultor" y estado true', async () => {
+    it('crea el usuario con role consultor y estado true', async () => {
       await service.verifyEmail(verifyDto);
       expect(createdUserData.role).toBe('consultor');
       expect(createdUserData.estado).toBe(true);
@@ -248,11 +284,22 @@ describe('UserService', () => {
       expect(mockUserSave).toHaveBeenCalledTimes(1);
     });
 
+    it('llama a createMany con las notificaciones de bienvenida', async () => {
+      await service.verifyEmail(verifyDto);
+      expect(mockNotificationService.createMany).toHaveBeenCalledTimes(1);
+      const [, notifications] = mockNotificationService.createMany.mock.calls[0];
+      expect(notifications).toHaveLength(2);
+    });
+
+    it('genera el token jwt después de crear el usuario', async () => {
+      await service.verifyEmail(verifyDto);
+      expect(mockJwtService.sign).toHaveBeenCalledTimes(1);
+    });
+
     it('no llama a save si el código es incorrecto', async () => {
       await expect(
         service.verifyEmail({ ...verifyDto, code: '000000' }),
       ).rejects.toThrow(BadRequestException);
-
       expect(mockUserSave).not.toHaveBeenCalled();
     });
   });
@@ -262,7 +309,6 @@ describe('UserService', () => {
   describe('getAllUsers', () => {
     it('retorna usuarios paginados correctamente', async () => {
       const usersMock = [{ email: 'a@test.com' }];
-
       mockUserModel.find.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
@@ -306,7 +352,6 @@ describe('UserService', () => {
       mockUserModel.find.mockImplementation(() => {
         throw new Error('DB error');
       });
-
       await expect(service.getAllUsers(1, 10)).rejects.toThrow(
         InternalServerErrorException,
       );
@@ -354,18 +399,9 @@ describe('UserService', () => {
 
     it('lanza InternalServerErrorException si el usuario no existe', async () => {
       mockUserModel.findById.mockResolvedValue(null);
-
       await expect(service.updateUserRol(mockUserId, mockRole)).rejects.toThrow(
         InternalServerErrorException,
       );
-    });
-
-    it('no llama a save si el usuario no existe', async () => {
-      const mockSaveLocal = jest.fn();
-      mockUserModel.findById.mockResolvedValue(null);
-
-      await expect(service.updateUserRol(mockUserId, mockRole)).rejects.toThrow();
-      expect(mockSaveLocal).not.toHaveBeenCalled();
     });
 
     it('lanza InternalServerErrorException cuando save falla', async () => {
@@ -382,10 +418,78 @@ describe('UserService', () => {
 
     it('lanza InternalServerErrorException cuando findById falla', async () => {
       mockUserModel.findById.mockRejectedValue(new Error('DB fail'));
-
       await expect(service.updateUserRol(mockUserId, mockRole)).rejects.toThrow(
         InternalServerErrorException,
       );
+    });
+  });
+
+  // ─── updateProfile ────────────────────────────────────────────────────────────
+
+  describe('updateProfile', () => {
+    it('actualiza firstname y lastname correctamente', async () => {
+      const mockUser = { firstname: '', lastname: '', save: jest.fn().mockResolvedValue({}) };
+      mockUserModel.findById.mockResolvedValue(mockUser);
+
+      const result = await service.updateProfile('abc123', {
+        firstname: 'Juan',
+        lastname: 'Pérez',
+      });
+
+      expect(mockUser.firstname).toBe('Juan');
+      expect(mockUser.lastname).toBe('Pérez');
+      expect(result).toEqual({ message: 'Perfil actualizado correctamente' });
+    });
+
+    it('lanza ConflictException si el usuario no existe', async () => {
+      mockUserModel.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updateProfile('abc123', { firstname: 'Juan', lastname: 'Pérez' }),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  // ─── updatePassword ───────────────────────────────────────────────────────────
+
+  describe('updatePassword', () => {
+    it('actualiza la contraseña si la actual es correcta', async () => {
+      const hashed = bcrypt.hashSync('oldPass', 10);
+      const mockUser = { password: hashed, save: jest.fn().mockResolvedValue({}) };
+      mockUserModel.findById.mockResolvedValue(mockUser);
+
+      const result = await service.updatePassword('abc123', {
+        currentPassword: 'oldPass',
+        newPassword: 'newPass123',
+      });
+
+      expect(result).toEqual({ message: 'Contraseña actualizada correctamente' });
+      const isMatch = await bcrypt.compare('newPass123', mockUser.password);
+      expect(isMatch).toBe(true);
+    });
+
+    it('lanza ConflictException si el usuario no existe', async () => {
+      mockUserModel.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updatePassword('abc123', {
+          currentPassword: 'old',
+          newPassword: 'new',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('lanza BadRequestException si la contraseña actual es incorrecta', async () => {
+      const hashed = bcrypt.hashSync('correctPass', 10);
+      const mockUser = { password: hashed, save: jest.fn() };
+      mockUserModel.findById.mockResolvedValue(mockUser);
+
+      await expect(
+        service.updatePassword('abc123', {
+          currentPassword: 'wrongPass',
+          newPassword: 'newPass123',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

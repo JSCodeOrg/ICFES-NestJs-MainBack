@@ -201,4 +201,30 @@ export class IcfesController {
   promedioMunicipio(@Param('municipio') municipio: string) {
     return this.cacheService.remember('promedio_municipio', { municipio }, () => this.icfesService.promedioMunicipio(municipio));
   }
+
+  @Get('desempeno-por-estrato')
+  @ApiOperation({
+    summary: 'Desempeño por estrato',
+    description: 'Promedio de PUNT_GLOBAL agrupado por FAMI_ESTRATOVIVIENDA',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Promedio por estrato socioeconómico',
+  })
+  desempenoPorEstrato() {
+    return this.cacheService.remember('desempeno_por_estrato', {}, () => this.icfesService.desempenoPorEstrato());
+  }
+
+  @Get('distribucion-edad')
+  @ApiOperation({
+    summary: 'Distribución por edad',
+    description: 'Cantidad de estudiantes agrupados por edad',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Distribución de edades',
+  })
+  distribucionEdad() {
+    return this.cacheService.remember('distribucion_edad', {}, () => this.icfesService.distribucionPorEdad());
+  }
 }

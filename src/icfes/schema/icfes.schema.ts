@@ -221,3 +221,10 @@ ResultadosSchema.index({
   REGION_RESIDE: 1,
   PUNT_GLOBAL: -1,
 });
+
+ResultadosSchema.index({
+  ANIO_EXAMEN: 1,
+  FAMI_ESTRATOVIVIENDA: 1,
+});
+
+ResultadosSchema.index({ EDAD: 1 });

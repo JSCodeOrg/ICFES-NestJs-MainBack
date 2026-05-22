@@ -888,4 +888,95 @@ export class IcfesService {
       }
     );
   }
+
+  async desempenoPorEstrato() {
+    return this.resultadoModel.aggregate([
+      // 1. Filtrado base
+      {
+        $match: {
+          PUNT_GLOBAL: { $ne: null },
+          FAMI_ESTRATOVIVIENDA: { $ne: null },
+        },
+      },
+
+      // 2. NORMALIZACIÓN CRÍTICA
+      {
+        $addFields: {
+          estrato_normalizado: {
+            $toString: {
+              $cond: [
+                {
+                  $in: ['$FAMI_ESTRATOVIVIENDA', [null, '', '0', 0, 'NULL', 'null', undefined]],
+                },
+                '1', // fallback
+                '$FAMI_ESTRATOVIVIENDA',
+              ],
+            },
+          },
+        },
+      },
+
+      // 3. Agrupación
+      {
+        $group: {
+          _id: '$estrato_normalizado',
+          promedio: { $avg: '$PUNT_GLOBAL' },
+          total_estudiantes: { $sum: 1 },
+        },
+      },
+
+      // 4. Orden (como string numérico correcto)
+      {
+        $addFields: {
+          estrato_num: { $toInt: '$_id' },
+        },
+      },
+
+      {
+        $sort: {
+          estrato_num: 1,
+        },
+      },
+
+      // 5. Formato final
+      {
+        $project: {
+          _id: 0,
+          estrato: '$_id',
+          promedio: { $round: ['$promedio', 2] },
+          total_estudiantes: 1,
+        },
+      },
+    ]);
+  }
+
+  async distribucionPorEdad() {
+    return this.resultadoModel.aggregate([
+      {
+        $match: {
+          EDAD: { $ne: null },
+        },
+      },
+      {
+        $bucket: {
+          groupBy: '$EDAD',
+          boundaries: [10, 12, 14, 16, 18, 20, 22, 24, 26],
+          default: '26+',
+          output: {
+            total: { $sum: 1 },
+          },
+        },
+      },
+      {
+        $project: {
+          edad: '$_id',
+          total: 1,
+          _id: 0,
+        },
+      },
+      {
+        $sort: { edad: 1 },
+      },
+    ]);
+  }
 }

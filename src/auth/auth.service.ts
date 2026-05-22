@@ -25,6 +25,9 @@ export class AuthService {
         email: user.email,
         role: user.role,
         estado: user.estado,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        lastLogin: user.lastLogin,
       };
     }
 
@@ -41,6 +44,8 @@ export class AuthService {
     if (!user.estado) {
       throw new UnauthorizedException('Usuario inactivo');
     }
+
+    await this.userModel.findByIdAndUpdate(user.id, {lastLogin: new Date()});
 
     const payload = {
       email: user.email,
@@ -69,6 +74,7 @@ export class AuthService {
           role: user.role,
           firstname: user.firstname ?? '',
           lastname: user.lastname ?? '',
+          lastLogin: user.lastLogin ?? null,
         };
       }
     } catch (error) {

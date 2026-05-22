@@ -154,4 +154,29 @@ export class UserService {
     return { message: 'Contraseña actualizada correctamente'}
 
   }
+
+
+  async toggleUserEstado(id: string) {
+    const user = await this.userModel.findById(id);
+    if (!user) throw new ConflictException('Usuario no encontrado.');
+ 
+    user.estado = !user.estado;
+    await user.save();
+ 
+    return {
+      message: `Usuario ${user.estado ? 'activado' : 'desactivado'} correctamente.`,
+      estado: user.estado,
+    };
+  }
+ 
+  async deleteUser(id: string) {
+    const user = await this.userModel.findById(id);
+    if (!user) throw new ConflictException('Usuario no encontrado.');
+ 
+    await this.userModel.findByIdAndDelete(id);
+ 
+    return { message: 'Usuario eliminado correctamente.' };
+  }
+
+  
 }

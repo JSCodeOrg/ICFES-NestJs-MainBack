@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { IcfesModule } from './icfes/icfes.module';
 import { InstitucionModule } from './institucion/institucion.module';
+import { RoleRequestModule } from './rolRequestUser/role-request.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { InstitucionModule } from './institucion/institucion.module';
     UserModule,
     IcfesModule,
     InstitucionModule,
+    RoleRequestModule,
   ],
   controllers: [AppController],
   providers: [AppService],

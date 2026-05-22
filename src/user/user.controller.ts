@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, Query, Patch, Param } from '@nestjs/common';
+import { Body, Controller, Post, Get, Query, Patch, Param, Delete } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/createUserDto';
@@ -92,6 +92,29 @@ export class UserController {
   @ApiResponse({ status: 400, description: 'La contraseña actual es incorrecta.' })
   updatePassword(@Param('id') id: string, @Body() body: UpdatePasswordDto) {
     return this.userService.updatePassword(id, body);
+  }
+
+
+  @Patch('user/estado/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @ApiBearerAuth()
+  @Roles('admin')
+  @ApiOperation({ summary: 'Activar o desactivar cuenta de usuario', description: 'Cambia el campo estado de true a false y viceversa.' })
+  @ApiResponse({ status: 200, description: 'Estado actualizado correctamente.' })
+  @ApiResponse({ status: 404, description: 'Usuario no encontrado.' })
+  toggleUserEstado(@Param('id') id: string) {
+    return this.userService.toggleUserEstado(id);
+  }
+ 
+  @Delete('user/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @ApiBearerAuth()
+  @Roles('admin')
+  @ApiOperation({ summary: 'Eliminar usuario', description: 'Elimina permanentemente un usuario del sistema.' })
+  @ApiResponse({ status: 200, description: 'Usuario eliminado correctamente.' })
+  @ApiResponse({ status: 404, description: 'Usuario no encontrado.' })
+  deleteUser(@Param('id') id: string) {
+    return this.userService.deleteUser(id);
   }
 
 }

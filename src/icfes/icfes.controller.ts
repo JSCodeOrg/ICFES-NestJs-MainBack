@@ -1,6 +1,6 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { IcfesService } from './icfes.service';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { PromedioAnualDto } from './dto/promedioAnualDto';
 import { CacheService } from '../cache/cache.service';
 import { TopDepartamentos } from './dto/topDepartamentos';
@@ -160,5 +160,45 @@ export class IcfesController {
   })
   comparacionAccesoTecnologico(@Query() dto: ComparacionDepartamentosDto) {
     return this.cacheService.remember('comparacion_acceso_tecnologico', { dto }, () => this.icfesService.getComparacionAccesoTecnologico(dto.departamentoA, dto.departamentoB));
+  }
+
+  @Get('promedio-nacional-materias')
+  @ApiOperation({
+    summary: 'Promedio nacional por materias',
+
+    description: 'Calcula el promedio nacional de cada asignatura del ICFES',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Promedios nacionales por materia',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Ocurrió un error al calcular los promedios nacionales por materia',
+  })
+  promedioNacionalMaterias() {
+    return this.cacheService.remember('promedio_nacional_materias', {}, () => this.icfesService.promedioNacionalMaterias());
+  }
+
+  @Get(':codigoDane/desempeno-ingles')
+  @ApiOperation({
+    summary: 'Desempeño de inglés de una institución',
+    description: 'Devuelve el nivel predominante de inglés y el promedio de puntaje de inglés de una institución',
+  })
+  @ApiParam({
+    name: 'codigoDane',
+    example: 105001000043,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Desempeño de inglés calculado correctamente',
+  })
+  desempenoIngles(@Param('codigoDane') codigoDane: string) {
+    return this.cacheService.remember('desempeno_ingles', { codigoDane }, () => this.icfesService.desempenoIngles(Number(codigoDane)));
+  }
+
+  @Get('promedio-municipio/:municipio')
+  promedioMunicipio(@Param('municipio') municipio: string) {
+    return this.cacheService.remember('promedio_municipio', { municipio }, () => this.icfesService.promedioMunicipio(municipio));
   }
 }

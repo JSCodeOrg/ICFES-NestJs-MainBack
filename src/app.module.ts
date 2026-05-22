@@ -6,6 +6,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { IcfesModule } from './icfes/icfes.module';
+import { InstitucionModule } from './institucion/institucion.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { IcfesModule } from './icfes/icfes.module';
     AuthModule,
     UserModule,
     IcfesModule,
+    InstitucionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

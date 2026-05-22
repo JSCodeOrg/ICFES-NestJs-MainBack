@@ -714,4 +714,269 @@ export class IcfesService {
       throw new InternalServerErrorException(error);
     }
   }
+
+  async promedioNacionalMaterias() {
+    const [resultado] = await this.resultadoModel.aggregate([
+      {
+        $group: {
+          _id: null,
+
+          lectura_critica: {
+            $avg: '$PUNT_LECTURA_CRITICA',
+          },
+
+          matematicas: {
+            $avg: '$PUNT_MATEMATICAS',
+          },
+
+          ciencias_naturales: {
+            $avg: '$PUNT_C_NATURALES',
+          },
+
+          sociales_ciudadanas: {
+            $avg: '$PUNT_SOCIALES_CIUDADANAS',
+          },
+
+          ingles: {
+            $avg: '$PUNT_INGLES',
+          },
+        },
+      },
+
+      {
+        $project: {
+          _id: 0,
+
+          materias: [
+            {
+              materia: 'Lectura Crítica',
+
+              promedio: {
+                $round: ['$lectura_critica', 2],
+              },
+            },
+
+            {
+              materia: 'Matemáticas',
+
+              promedio: {
+                $round: ['$matematicas', 2],
+              },
+            },
+
+            {
+              materia: 'Ciencias Naturales',
+
+              promedio: {
+                $round: ['$ciencias_naturales', 2],
+              },
+            },
+
+            {
+              materia: 'Sociales Ciudadanas',
+
+              promedio: {
+                $round: ['$sociales_ciudadanas', 2],
+              },
+            },
+
+            {
+              materia: 'Inglés',
+
+              promedio: {
+                $round: ['$ingles', 2],
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    return resultado;
+  }
+
+  async desempenoIngles(codigoDane: number) {
+    const [resultado] = await this.resultadoModel.aggregate([
+      {
+        $match: {
+          COLE_COD_DANE_ESTABLECIMIENTO: codigoDane,
+          DESEMP_INGLES: {
+            $ne: null,
+          },
+          PUNT_INGLES: {
+            $ne: null,
+          },
+        },
+      },
+
+      {
+        $group: {
+          _id: '$DESEMP_INGLES',
+
+          promedio_ingles: {
+            $avg: '$PUNT_INGLES',
+          },
+
+          total_estudiantes: {
+            $sum: 1,
+          },
+        },
+      },
+
+      {
+        $sort: {
+          total_estudiantes: -1,
+        },
+      },
+
+      {
+        $limit: 1,
+      },
+
+      {
+        $project: {
+          _id: 0,
+
+          nivel: '$_id',
+
+          promedio_ingles: {
+            $round: ['$promedio_ingles', 2],
+          },
+
+          total_estudiantes: 1,
+        },
+      },
+    ]);
+
+    return resultado;
+  }
+
+  async promedioMunicipio(municipio: string) {
+    const [resultado] = await this.resultadoModel.aggregate([
+      {
+        $match: {
+          COLE_MCPIO_UBICACION: municipio,
+          PUNT_GLOBAL: { $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          promedio_municipio: {
+            $avg: '$PUNT_GLOBAL',
+          },
+          total_estudiantes: {
+            $sum: 1,
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          promedio_municipio: {
+            $round: ['$promedio_municipio', 2],
+          },
+          total_estudiantes: 1,
+        },
+      },
+    ]);
+
+    return (
+      resultado ?? {
+        promedio_municipio: 0,
+        total_estudiantes: 0,
+      }
+    );
+  }
+
+  async desempenoPorEstrato() {
+    return this.resultadoModel.aggregate([
+      // 1. Filtrado base
+      {
+        $match: {
+          PUNT_GLOBAL: { $ne: null },
+          FAMI_ESTRATOVIVIENDA: { $ne: null },
+        },
+      },
+
+      // 2. NORMALIZACIÓN CRÍTICA
+      {
+        $addFields: {
+          estrato_normalizado: {
+            $toString: {
+              $cond: [
+                {
+                  $in: ['$FAMI_ESTRATOVIVIENDA', [null, '', '0', 0, 'NULL', 'null', undefined]],
+                },
+                '1', // fallback
+                '$FAMI_ESTRATOVIVIENDA',
+              ],
+            },
+          },
+        },
+      },
+
+      // 3. Agrupación
+      {
+        $group: {
+          _id: '$estrato_normalizado',
+          promedio: { $avg: '$PUNT_GLOBAL' },
+          total_estudiantes: { $sum: 1 },
+        },
+      },
+
+      // 4. Orden (como string numérico correcto)
+      {
+        $addFields: {
+          estrato_num: { $toInt: '$_id' },
+        },
+      },
+
+      {
+        $sort: {
+          estrato_num: 1,
+        },
+      },
+
+      // 5. Formato final
+      {
+        $project: {
+          _id: 0,
+          estrato: '$_id',
+          promedio: { $round: ['$promedio', 2] },
+          total_estudiantes: 1,
+        },
+      },
+    ]);
+  }
+
+  async distribucionPorEdad() {
+    return this.resultadoModel.aggregate([
+      {
+        $match: {
+          EDAD: { $ne: null },
+        },
+      },
+      {
+        $bucket: {
+          groupBy: '$EDAD',
+          boundaries: [10, 12, 14, 16, 18, 20, 22, 24, 26],
+          default: '26+',
+          output: {
+            total: { $sum: 1 },
+          },
+        },
+      },
+      {
+        $project: {
+          edad: '$_id',
+          total: 1,
+          _id: 0,
+        },
+      },
+      {
+        $sort: { edad: 1 },
+      },
+    ]);
+  }
 }

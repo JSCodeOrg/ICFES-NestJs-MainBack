@@ -16,6 +16,7 @@ describe('AuthService', () => {
   const mockUserModel = {
     findOne: jest.fn(),
     findById: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
   };
 
   const mockJwtService = {
@@ -38,7 +39,7 @@ describe('AuthService', () => {
       ],
     }).compile();
 
-    service = module.get(AuthService);
+    service = module.get<AuthService>(AuthService);
   });
 
   afterEach(() => {
@@ -51,17 +52,25 @@ describe('AuthService', () => {
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      const result = await service.validateUser('test@test.com', '123');
+      const result = await service.validateUser(
+        'test@test.com',
+        '123',
+      );
 
       expect(result).toBeNull();
     });
 
     it('retorna null si no tiene password', async () => {
       mockUserModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ password: null }),
+        exec: jest.fn().mockResolvedValue({
+          password: null,
+        }),
       });
 
-      const result = await service.validateUser('test@test.com', '123');
+      const result = await service.validateUser(
+        'test@test.com',
+        '123',
+      );
 
       expect(result).toBeNull();
     });
@@ -73,16 +82,25 @@ describe('AuthService', () => {
         password: 'hash',
         role: 'user',
         estado: true,
+        firstname: 'Jairo',
+        lastname: 'Gomez',
+        lastLogin: null,
       };
 
       mockUserModel.findOne.mockReturnValue({
         exec: jest.fn().mockResolvedValue(user),
       });
 
-      const compareMock = bcrypt.compare as jest.MockedFunction<typeof bcrypt.compare>;
+      const compareMock = bcrypt.compare as jest.MockedFunction<
+        typeof bcrypt.compare
+      >;
+
       compareMock.mockResolvedValue(false as never);
 
-      const result = await service.validateUser('test@test.com', 'wrong');
+      const result = await service.validateUser(
+        'test@test.com',
+        'wrong',
+      );
 
       expect(result).toBeNull();
     });
@@ -94,58 +112,103 @@ describe('AuthService', () => {
         password: 'hash',
         role: 'admin',
         estado: true,
+        firstname: 'Jairo Andres',
+        lastname: 'Gomez Cardona',
+        lastLogin: null,
       };
 
       mockUserModel.findOne.mockReturnValue({
         exec: jest.fn().mockResolvedValue(user),
       });
 
-      const compareMock = bcrypt.compare as jest.MockedFunction<typeof bcrypt.compare>;
+      const compareMock = bcrypt.compare as jest.MockedFunction<
+        typeof bcrypt.compare
+      >;
+
       compareMock.mockResolvedValue(true as never);
 
-      const result = await service.validateUser('test@test.com', '123');
+      const result = await service.validateUser(
+        'test@test.com',
+        '123',
+      );
 
       expect(result).toEqual({
         id: user._id,
         email: user.email,
         role: user.role,
         estado: user.estado,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        lastLogin: user.lastLogin,
       });
     });
   });
 
   describe('login', () => {
     it('lanza Unauthorized si credenciales inválidas', async () => {
-      jest.spyOn(service, 'validateUser').mockResolvedValue(null);
+      jest
+        .spyOn(service, 'validateUser')
+        .mockResolvedValue(null);
 
-      await expect(service.login({ email: 'test@test.com', password: '123' })).rejects.toThrow(UnauthorizedException);
+      await expect(
+        service.login({
+          email: 'test@test.com',
+          password: '123',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('lanza Unauthorized si usuario inactivo', async () => {
-      jest.spyOn(service, 'validateUser').mockResolvedValue({
-        id: new Types.ObjectId('507f1f77bcf86cd799439011'),
-        email: 'test@test.com',
-        role: 'user',
-        estado: false,
-      });
+      jest
+        .spyOn(service, 'validateUser')
+        .mockResolvedValue({
+          id: new Types.ObjectId(
+            '507f1f77bcf86cd799439011',
+          ),
+          email: 'test@test.com',
+          role: 'user',
+          estado: false,
+          firstname: 'Jairo',
+          lastname: 'Gomez',
+          lastLogin: null,
+        });
 
-      await expect(service.login({ email: 'test@test.com', password: '123' })).rejects.toThrow(UnauthorizedException);
+      await expect(
+        service.login({
+          email: 'test@test.com',
+          password: '123',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('retorna token si todo es válido', async () => {
       const user = {
-        id: new Types.ObjectId('507f1f77bcf86cd799439011'),
+        id: new Types.ObjectId(
+          '507f1f77bcf86cd799439011',
+        ),
         email: 'test@test.com',
         role: 'admin',
         estado: true,
+        firstname: 'Jairo',
+        lastname: 'Gomez',
+        lastLogin: null,
       };
 
-      jest.spyOn(service, 'validateUser').mockResolvedValue(user);
+      jest
+        .spyOn(service, 'validateUser')
+        .mockResolvedValue(user);
+
       mockJwtService.sign.mockReturnValue('token123');
 
       const result = await service.login({
         email: 'test@test.com',
         password: '123',
+      });
+
+      expect(
+        mockUserModel.findByIdAndUpdate,
+      ).toHaveBeenCalledWith(user.id, {
+        lastLogin: expect.any(Date),
       });
 
       expect(mockJwtService.sign).toHaveBeenCalledWith({
@@ -160,63 +223,73 @@ describe('AuthService', () => {
     });
   });
 
-  it('retorna usuario si token es válido y existe usuario', async () => {
-    const token = 'valid-token';
+  describe('getMe', () => {
+    it('retorna usuario si token es válido y existe usuario', async () => {
+      const token = 'valid-token';
 
-    const payload = {
-      id: '1',
-      email: 'test@test.com',
-      role: 'admin',
-    };
+      const payload = {
+        id: '1',
+        email: 'test@test.com',
+        role: 'admin',
+      };
 
-    const user = {
-      _id: '1',
-      email: 'test@test.com',
-      role: 'admin',
-      firstname: 'Jairo Andres',  
-      lastname: 'Gomez Cardona',
-    };
+      const user = {
+        _id: '1',
+        email: 'test@test.com',
+        role: 'admin',
+        firstname: 'Jairo Andres',
+        lastname: 'Gomez Cardona',
+        lastLogin: null,
+      };
 
-    mockJwtService.verify.mockReturnValue(payload);
-    mockUserModel.findById.mockResolvedValue(user);
+      mockJwtService.verify.mockReturnValue(payload);
 
-    const result = await service.getMe(token);
+      mockUserModel.findById.mockResolvedValue(user);
 
-    expect(mockJwtService.verify).toHaveBeenCalledWith(token);
-    expect(mockUserModel.findById).toHaveBeenCalledWith(payload.id);
+      const result = await service.getMe(token);
 
-    expect(result).toEqual({
-      id: payload.id,
-      email: payload.email,
-      role: payload.role,
-      firstname: 'Jairo Andres',  
-      lastname: 'Gomez Cardona',
+      expect(mockJwtService.verify).toHaveBeenCalledWith(
+        token,
+      );
+
+      expect(mockUserModel.findById).toHaveBeenCalledWith(
+        payload.id,
+      );
+
+      expect(result).toEqual({
+        id: payload.id,
+        email: payload.email,
+        role: payload.role,
+        firstname: 'Jairo Andres',
+        lastname: 'Gomez Cardona',
+        lastLogin: null,
+      });
+    });
+
+    it('lanza UnauthorizedException si token es inválido', async () => {
+      mockJwtService.verify.mockImplementation(() => {
+        throw new Error('invalid token');
+      });
+
+      await expect(
+        service.getMe('bad-token'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('lanza UnauthorizedException si usuario no existe', async () => {
+      const payload = {
+        id: '1',
+        email: 'test@test.com',
+        role: 'admin',
+      };
+
+      mockJwtService.verify.mockReturnValue(payload);
+
+      mockUserModel.findById.mockResolvedValue(null);
+
+      await expect(
+        service.getMe('valid-token'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
-
-  it('lanza UnauthorizedException si token es inválido', async () => {
-    mockJwtService.verify.mockImplementation(() => {
-      throw new Error('invalid token');
-    });
-
-    await expect(service.getMe('bad-token')).rejects.toThrow(
-      UnauthorizedException,
-    );
-  });
-
-  it('lanza UnauthorizedException si usuario no existe', async () => {
-    const payload = {
-      id: '1',
-      email: 'test@test.com',
-      role: 'admin',
-    };
-
-    mockJwtService.verify.mockReturnValue(payload);
-    mockUserModel.findById.mockResolvedValue(null);
-
-    await expect(service.getMe('valid-token')).rejects.toThrow(
-      UnauthorizedException,
-    );
-  });
-
 });

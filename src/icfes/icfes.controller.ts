@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { IcfesService } from './icfes.service';
-import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { PromedioAnualDto } from './dto/promedioAnualDto';
 import { CacheService } from '../cache/cache.service';
 import { TopDepartamentos } from './dto/topDepartamentos';
@@ -37,16 +37,42 @@ export class IcfesController {
   promedioAnual(@Query() dto: PromedioAnualDto) {
     return this.cacheService.remember('promedio_anual', dto, () => this.icfesService.promedioAnual(dto));
   }
-
   @Get('promedio-nacional')
   @ApiOperation({
     summary: 'Promedio nacional del puntaje global',
-    description: 'Devuelve el promedio global de todos los registros',
+    description: 'Devuelve el promedio global, opcionalmente filtrado por año y departamento',
   })
-  @ApiResponse({ status: 200, description: 'Promedio nacional calculado correctamente' })
-  @ApiResponse({ status: 500, description: 'Error al calcular el promedio nacional' })
-  promedioNacional() {
-    return this.cacheService.remember('promedio_nacional', {}, () => this.icfesService.promedioNacional());
+  @ApiQuery({
+    name: 'anio',
+    required: false,
+    type: Number,
+    description: 'Año del examen (ANIO_EXAMEN)',
+  })
+  @ApiQuery({
+    name: 'departamento',
+    required: false,
+    type: String,
+    description: 'Departamento de residencia (ESTU_DEPTO_RESIDE)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Promedio nacional calculado correctamente',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error al calcular el promedio nacional',
+  })
+  promedioNacional(@Query('anio') anio?: string, @Query('departamento') departamento?: string) {
+    const parsedAnio = anio ? Number(anio) : undefined;
+
+    return this.cacheService.remember(
+      'promedio_nacional',
+      {
+        anio: parsedAnio,
+        departamento,
+      },
+      () => this.icfesService.promedioNacional(parsedAnio, departamento),
+    );
   }
 
   @Get('total-registros')
@@ -207,12 +233,12 @@ export class IcfesController {
     summary: 'Desempeño por estrato',
     description: 'Promedio de PUNT_GLOBAL agrupado por FAMI_ESTRATOVIVIENDA',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Promedio por estrato socioeconómico',
-  })
-  desempenoPorEstrato() {
-    return this.cacheService.remember('desempeno_por_estrato', {}, () => this.icfesService.desempenoPorEstrato());
+  @ApiQuery({ name: 'anio', required: false, type: Number })
+  @ApiQuery({ name: 'departamento', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Promedio por estrato socioeconómico' })
+  desempenoPorEstrato(@Query('anio') anio?: string, @Query('departamento') departamento?: string) {
+    const parsedAnio = anio ? Number(anio) : undefined;
+    return this.cacheService.remember('desempeno_por_estrato', { anio: parsedAnio, departamento }, () => this.icfesService.desempenoPorEstrato(parsedAnio, departamento));
   }
 
   @Get('distribucion-edad')
@@ -220,11 +246,35 @@ export class IcfesController {
     summary: 'Distribución por edad',
     description: 'Cantidad de estudiantes agrupados por edad',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Distribución de edades',
+  @ApiQuery({ name: 'anio', required: false, type: Number })
+  @ApiQuery({ name: 'departamento', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Distribución de edades' })
+  distribucionEdad(@Query('anio') anio?: string, @Query('departamento') departamento?: string) {
+    const parsedAnio = anio ? Number(anio) : undefined;
+    return this.cacheService.remember('distribucion_edad', { anio: parsedAnio, departamento }, () => this.icfesService.distribucionPorEdad(parsedAnio, departamento));
+  }
+  @Get('desempeno-por-educacion-padres')
+  @ApiOperation({
+    summary: 'Desempeño por educación de padres',
+    description: 'Promedio de PUNT_GLOBAL agrupado por educación de madre y padre',
   })
-  distribucionEdad() {
-    return this.cacheService.remember('distribucion_edad', {}, () => this.icfesService.distribucionPorEdad());
+  @ApiQuery({ name: 'anio', required: false, type: Number })
+  @ApiQuery({ name: 'departamento', required: false, type: String })
+  desempenoPorEducacionPadres(@Query('anio') anio?: string, @Query('departamento') departamento?: string) {
+    const parsedAnio = anio ? Number(anio) : undefined;
+    return this.cacheService.remember('desempeno_educacion_padres', { anio: parsedAnio, departamento }, () => this.icfesService.desempenoPorEducacionPadres(parsedAnio, departamento));
+  }
+
+  @Get('impacto-equipamiento-hogar')
+  @ApiOperation({
+    summary: 'Impacto del equipamiento del hogar',
+    description: 'Promedio de PUNT_GLOBAL según disponibilidad de bienes en el hogar',
+  })
+  @ApiQuery({ name: 'anio', required: false, type: Number })
+  @ApiQuery({ name: 'departamento', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Impacto del equipamiento calculado correctamente' })
+  impactoEquipamientoHogar(@Query('anio') anio?: string, @Query('departamento') departamento?: string) {
+    const parsedAnio = anio ? Number(anio) : undefined;
+    return this.cacheService.remember('impacto_equipamiento_hogar', { anio: parsedAnio, departamento }, () => this.icfesService.impactoEquipamientoHogar(parsedAnio, departamento));
   }
 }

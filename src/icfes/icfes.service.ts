@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Resultado } from './schema/icfes.schema';
-import { Model } from 'mongoose';
+import { Model, PipelineStage } from 'mongoose';
 import { PromedioAnualDto } from './dto/promedioAnualDto';
 import { CacheService } from '../cache/cache.service';
 
@@ -116,12 +116,14 @@ export class IcfesService {
       throw new InternalServerErrorException(error);
     }
   }
-  async promedioNacional() {
+  async promedioNacional(anio?: number, departamento?: string) {
     try {
       return this.resultadoModel.aggregate([
         {
           $match: {
             PUNT_GLOBAL: { $ne: null },
+            ...(anio && { ANIO_EXAMEN: anio }),
+            ...(departamento && { ESTU_DEPTO_RESIDE: departamento }),
           },
         },
         {
@@ -141,7 +143,6 @@ export class IcfesService {
       throw new InternalServerErrorException(error);
     }
   }
-
   async totalRegistros() {
     try {
       return this.resultadoModel.aggregate([
@@ -889,16 +890,16 @@ export class IcfesService {
     );
   }
 
-  async desempenoPorEstrato() {
+  async desempenoPorEstrato(anio?: number, departamento?: string) {
     return this.resultadoModel.aggregate([
-      // 1. Filtrado base
       {
         $match: {
           PUNT_GLOBAL: { $ne: null },
           FAMI_ESTRATOVIVIENDA: { $ne: null },
+          ...(anio && { ANIO_EXAMEN: anio }),
+          ...(departamento && { COLE_DEPTO_UBICACION: departamento.toUpperCase() }),
         },
       },
-
       // 2. NORMALIZACIÓN CRÍTICA
       {
         $addFields: {
@@ -950,11 +951,13 @@ export class IcfesService {
     ]);
   }
 
-  async distribucionPorEdad() {
+  async distribucionPorEdad(anio?: number, departamento?: string) {
     return this.resultadoModel.aggregate([
       {
         $match: {
           EDAD: { $ne: null },
+          ...(anio && { ANIO_EXAMEN: anio }),
+          ...(departamento && { COLE_DEPTO_UBICACION: departamento.toUpperCase() }),
         },
       },
       {
@@ -978,5 +981,109 @@ export class IcfesService {
         $sort: { edad: 1 },
       },
     ]);
+  }
+
+  async desempenoPorEducacionPadres(anio?: number, departamento?: string) {
+    const filtrosBase = {
+      ...(anio && { ANIO_EXAMEN: anio }),
+      ...(departamento && { COLE_DEPTO_UBICACION: departamento.toUpperCase() }),
+    };
+
+    const [madre, padre] = await Promise.all([
+      this.resultadoModel.aggregate([
+        {
+          $match: {
+            FAMI_EDUCACIONMADRE: { $ne: null },
+            PUNT_GLOBAL: { $ne: null },
+            ...filtrosBase,
+          },
+        },
+        {
+          $group: {
+            _id: '$FAMI_EDUCACIONMADRE',
+            promedio: { $avg: '$PUNT_GLOBAL' },
+            total_estudiantes: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            _id: 0,
+            nivel_educacion: '$_id',
+            promedio: { $round: ['$promedio', 2] },
+            total_estudiantes: 1,
+          },
+        },
+      ]),
+      this.resultadoModel.aggregate([
+        {
+          $match: {
+            FAMI_EDUCACIONPADRE: { $ne: null },
+            PUNT_GLOBAL: { $ne: null },
+            ...filtrosBase,
+          },
+        },
+        {
+          $group: {
+            _id: '$FAMI_EDUCACIONPADRE',
+            promedio: { $avg: '$PUNT_GLOBAL' },
+            total_estudiantes: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            _id: 0,
+            nivel_educacion: '$_id',
+            promedio: { $round: ['$promedio', 2] },
+            total_estudiantes: 1,
+          },
+        },
+      ]),
+    ]);
+
+    return { madre, padre };
+  }
+
+  async impactoEquipamientoHogar(anio?: number, departamento?: string) {
+    const buildAgg = (field: keyof Resultado) =>
+      this.resultadoModel.aggregate([
+        {
+          $match: {
+            PUNT_GLOBAL: { $ne: null },
+            [field]: 1,
+            ...(anio && { ANIO_EXAMEN: anio }),
+            ...(departamento && { COLE_DEPTO_UBICACION: departamento.toUpperCase() }),
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            promedio: { $avg: '$PUNT_GLOBAL' },
+            total: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            promedio: { $round: ['$promedio', 2] },
+            total: 1,
+          },
+        },
+      ]);
+
+    const [carro, lavadora, internet, computador] = await Promise.all([
+      buildAgg('FAMI_TIENEAUTOMOVIL'),
+      buildAgg('FAMI_TIENELAVADORA'),
+      buildAgg('FAMI_TIENEINTERNET'),
+      buildAgg('FAMI_TIENECOMPUTADOR'),
+    ]);
+
+    return {
+      carro: carro[0] ?? { promedio: 0, total: 0 },
+      lavadora: lavadora[0] ?? { promedio: 0, total: 0 },
+      internet: internet[0] ?? { promedio: 0, total: 0 },
+      computador: computador[0] ?? { promedio: 0, total: 0 },
+    };
   }
 }

@@ -8,6 +8,9 @@ import { Departamento } from './dto/departamentoDto';
 import { TopMunicipiosDepartamento } from './dto/TopMunicipiosDepartamento';
 import { PromedioDepartamentoDto } from './dto/promedioDepartamentoDto';
 import { ComparacionDepartamentosDto } from './dto/comparacionDepartamentosDto';
+import { EvolucionFiltrosDto } from './dto/Evolucionfiltrosdto';
+import { DistribucionPorAnoDto } from './dto/DistribucionPoranoDto';
+import { ParticipacionPorAnoDto } from './dto/ParticipacionPorAnoDto';
 
 @Controller('icfes')
 export class IcfesController {
@@ -88,13 +91,17 @@ export class IcfesController {
 
   @Get('comparacion-colegios')
   @ApiOperation({
-    summary: 'Comparación entre colegios oficiales y no oficiales',
-    description: 'Devuelve promedio y total de estudiantes agrupados por tipo de colegio',
+    summary: 'Comparación entre colegios oficiales y no oficiales con filtros opcionales',
+    description: 'Devuelve promedio y total de estudiantes agrupados por tipo de colegio y año, ' + 'ordenados cronológicamente. Acepta filtros opcionales: departamento, genero, zona.',
   })
+  @ApiQuery({ name: 'departamento', required: false, example: 'VALLE' })
+  @ApiQuery({ name: 'genero', required: false, enum: ['M', 'F'] })
+  @ApiQuery({ name: 'zona', required: false, enum: ['URBANO', 'RURAL'] })
   @ApiResponse({ status: 200, description: 'Comparación realizada correctamente' })
   @ApiResponse({ status: 500, description: 'Error al realizar la comparación' })
-  comparacionColegios() {
-    return this.cacheService.remember('comparacion_colegios', {}, () => this.icfesService.comparacionColegios());
+  comparacionColegios(@Query() dto: EvolucionFiltrosDto) {
+    const { naturaleza, ...filtros } = dto;
+    return this.cacheService.remember('comparacion_colegios', filtros, () => this.icfesService.comparacionColegios(filtros));
   }
 
   @Get('promedio-departamento')
@@ -154,9 +161,21 @@ export class IcfesController {
     );
   }
   @Get('promedio-por-ano')
-  @ApiOperation({ summary: 'Promedio agrupado por año', description: 'Devuelve el promedio global agrupado por año' })
-  promedioAnos() {
-    return this.cacheService.remember('promedio_por_ano', {}, () => this.icfesService.promedioPorAno());
+  @ApiOperation({
+    summary: 'Promedio global por año con filtros opcionales',
+    description:
+      'Devuelve el promedio global agrupado por año. ' +
+      'Acepta filtros opcionales: departamento, genero (M|F), zona (URBANO|RURAL), ' +
+      'naturaleza (OFICIAL|NO OFICIAL). Permite superponer líneas en el frontend.',
+  })
+  @ApiQuery({ name: 'departamento', required: false, example: 'VALLE' })
+  @ApiQuery({ name: 'genero', required: false, enum: ['M', 'F'] })
+  @ApiQuery({ name: 'zona', required: false, enum: ['URBANO', 'RURAL'] })
+  @ApiQuery({ name: 'naturaleza', required: false, enum: ['OFICIAL', 'NO OFICIAL'] })
+  @ApiResponse({ status: 200, description: 'Promedio por año calculado correctamente' })
+  @ApiResponse({ status: 500, description: 'Error al calcular el promedio por año' })
+  promedioAnos(@Query() dto: EvolucionFiltrosDto) {
+    return this.cacheService.remember('promedio_por_ano', dto, () => this.icfesService.promedioPorAno(dto));
   }
 
   @Get('top-departamentos')
@@ -309,5 +328,51 @@ export class IcfesController {
   impactoEquipamientoHogar(@Query('anio') anio?: string, @Query('departamento') departamento?: string) {
     const parsedAnio = anio ? Number(anio) : undefined;
     return this.cacheService.remember('impacto_equipamiento_hogar', { anio: parsedAnio, departamento }, () => this.icfesService.impactoEquipamientoHogar(parsedAnio, departamento));
+  }
+
+  @Get('promedio-materias-por-ano')
+  @ApiOperation({
+    summary: 'Promedio de materias por año con filtros opcionales',
+    description: 'Devuelve el promedio de Lectura Crítica, Matemáticas, Sociales, Naturales e Inglés ' + 'agrupado por año. Acepta los mismos filtros que promedio-por-ano.',
+  })
+  @ApiQuery({ name: 'departamento', required: false, example: 'VALLE' })
+  @ApiQuery({ name: 'genero', required: false, enum: ['M', 'F'] })
+  @ApiQuery({ name: 'zona', required: false, enum: ['URBANO', 'RURAL'] })
+  @ApiQuery({ name: 'naturaleza', required: false, enum: ['OFICIAL', 'NO OFICIAL'] })
+  @ApiResponse({ status: 200, description: 'Promedios de materias calculados correctamente' })
+  @ApiResponse({ status: 500, description: 'Error al calcular el promedio de materias por año' })
+  promedioMateriasPorAno(@Query() dto: EvolucionFiltrosDto) {
+    return this.cacheService.remember('promedio_materias_por_ano', dto, () => this.icfesService.promedioPorMateriaPorAno(dto));
+  }
+
+  @Get('distribucion-puntajes-por-ano')
+  @ApiOperation({
+    summary: 'Distribución de puntajes por año (heatmap / ridgeline)',
+    description: 'Devuelve la cantidad de estudiantes por rango de puntaje (0-100, 100-200, …) y año. ' + 'Acepta filtros opcionales: departamento, genero, zona, naturaleza.',
+  })
+  @ApiQuery({ name: 'departamento', required: false, example: 'VALLE' })
+  @ApiQuery({ name: 'genero', required: false, enum: ['M', 'F'] })
+  @ApiQuery({ name: 'zona', required: false, enum: ['URBANO', 'RURAL'] })
+  @ApiQuery({ name: 'naturaleza', required: false, enum: ['OFICIAL', 'NO OFICIAL'] })
+  @ApiResponse({ status: 200, description: 'Distribución calculada correctamente' })
+  @ApiResponse({ status: 500, description: 'Error al calcular la distribución de puntajes' })
+  distribucionPuntajesPorAno(@Query() dto: DistribucionPorAnoDto) {
+    return this.cacheService.remember('distribucion_puntajes_por_ano', dto, () => this.icfesService.distribucionPuntajesPorAno(dto));
+  }
+
+  @Get('participacion-por-ano')
+  @ApiOperation({
+    summary: 'Total de estudiantes por año con segmentación opcional',
+    description:
+      'Devuelve el total de estudiantes evaluados por año. ' +
+      'Acepta filtros opcionales: departamento, genero, zona, naturaleza. ' +
+      'Parámetro especial "segmentar" (genero | zona): desglosa en líneas separadas ' +
+      'para evitar múltiples llamadas desde el frontend.',
+  })
+  @ApiResponse({ status: 200, description: 'Participación calculada correctamente' })
+  @ApiResponse({ status: 500, description: 'Error al calcular la participación por año' })
+  participacionPorAno(@Query() dto: ParticipacionPorAnoDto) {
+    const { segmentar, ...filtros } = dto;
+    return this.cacheService.remember('participacion_por_ano', dto, () => this.icfesService.participacionPorAno(filtros, segmentar));
   }
 }

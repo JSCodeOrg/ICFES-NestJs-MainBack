@@ -636,4 +636,125 @@ describe('IcfesService', () => {
       await expect(service.getComparacionAccesoTecnologico('ANTIOQUIA', 'CUNDINAMARCA')).rejects.toThrow('DB fail');
     });
   });
+
+  describe('participacionPorAno', () => {
+    it('retorna los datos correctamente sin segmentación ni filtros', async () => {
+      const data = [
+        { ano: '2014', total_estudiantes: 100 },
+        { ano: '2015', total_estudiantes: 150 },
+      ];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.participacionPorAno();
+
+      expect(result).toEqual(data);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledTimes(1);
+    });
+
+    it('retorna los datos filtrados por departamento', async () => {
+      const data = [{ ano: '2014', total_estudiantes: 80 }];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.participacionPorAno({ departamento: 'VALLE' });
+
+      expect(result).toEqual(data);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledTimes(1);
+    });
+
+    it('retorna los datos filtrados por rango de años', async () => {
+      const data = [
+        { ano: '2016', total_estudiantes: 120 },
+        { ano: '2017', total_estudiantes: 130 },
+      ];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.participacionPorAno({ anoDesde: 2016, anoHasta: 2017 });
+
+      expect(result).toEqual(data);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledTimes(1);
+    });
+
+    it('retorna los datos filtrados por naturaleza', async () => {
+      const data = [{ ano: '2018', total_estudiantes: 200 }];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.participacionPorAno({ naturaleza: 'OFICIAL' });
+
+      expect(result).toEqual(data);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledTimes(1);
+    });
+
+    it('retorna los datos segmentados por género con filtro de zona', async () => {
+      const data = [
+        { ano: '2019', total_estudiantes: 60, segmento: 'M' },
+        { ano: '2019', total_estudiantes: 40, segmento: 'F' },
+      ];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.participacionPorAno({ zona: 'URBANO' }, 'genero');
+
+      expect(result).toEqual(data);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledTimes(1);
+    });
+
+    it('retorna los datos segmentados por zona con filtro de género', async () => {
+      const data = [
+        { ano: '2020', total_estudiantes: 50, segmento: 'URBANO' },
+        { ano: '2020', total_estudiantes: 10, segmento: 'RURAL' },
+      ];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.participacionPorAno({ genero: 'F' }, 'zona');
+
+      expect(result).toEqual(data);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledTimes(1);
+    });
+
+    it('retorna los datos con múltiples filtros combinados', async () => {
+      const data = [{ ano: '2015', total_estudiantes: 45, segmento: 'M' }];
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve(data));
+
+      const result = await service.participacionPorAno({ departamento: 'VALLE', naturaleza: 'NO OFICIAL', anoDesde: 2015, anoHasta: 2018 }, 'genero');
+
+      expect(result).toEqual(data);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledTimes(1);
+    });
+
+    it('retorna arreglo vacío cuando no hay registros', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve([]));
+
+      const result = await service.participacionPorAno();
+
+      expect(result).toEqual([]);
+    });
+
+    it('retorna arreglo vacío con filtros aplicados y sin coincidencias', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.resolve([]));
+
+      const result = await service.participacionPorAno({ departamento: 'AMAZONAS', anoDesde: 2022, anoHasta: 2022 });
+
+      expect(result).toEqual([]);
+      expect(mockResultadoModel.aggregate).toHaveBeenCalledTimes(1);
+    });
+
+    it('propaga el error de BD como InternalServerErrorException', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(new Error('DB fail')));
+
+      await expect(service.participacionPorAno()).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('lanza InternalServerErrorException cuando aggregate lanza síncronamente', async () => {
+      mockResultadoModel.aggregate.mockImplementation(() => {
+        throw new Error('sync error');
+      });
+
+      await expect(service.participacionPorAno()).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('lanza InternalServerErrorException con el mensaje correcto', async () => {
+      mockResultadoModel.aggregate.mockReturnValue(Promise.reject(new Error('DB fail')));
+
+      await expect(service.participacionPorAno()).rejects.toThrow('Error al calcular la participación por año');
+    });
+  });
 });

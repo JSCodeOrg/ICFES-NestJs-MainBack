@@ -32,6 +32,8 @@ describe('IcfesController', () => {
     distribucionPorEdad: jest.fn(),
     impactoEquipamientoHogar: jest.fn(),
     desempenoPorEducacionPadres: jest.fn(),
+    participacionPorAno: jest.fn(),
+    distribucionPuntajeGlobalPorDepartamento: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -169,7 +171,8 @@ describe('IcfesController', () => {
   });
 
   describe('comparacionColegios', () => {
-    it('debería retornar la comparación entre colegios', async () => {
+    // ✅ FIX PRINCIPAL: pasar dto vacío en lugar de llamar sin argumentos
+    it('debería retornar la comparación entre colegios sin filtros', async () => {
       const mockResponse = [
         {
           tipo_colegio: 'OFICIAL',
@@ -186,25 +189,36 @@ describe('IcfesController', () => {
           ],
         },
       ];
-
       mockCacheService.remember.mockResolvedValue(mockResponse);
 
-      const result = await controller.comparacionColegios();
+      // dto vacío — la desestructuración de naturaleza funciona correctamente
+      const result = await controller.comparacionColegios({});
 
       expect(result).toEqual(mockResponse);
       expect(mockCacheService.remember).toHaveBeenCalledWith('comparacion_colegios', {}, expect.any(Function));
     });
 
-    it('debería ejecutar la función del servicio al no haber cache', async () => {
+    it('debería ignorar el filtro naturaleza al pasar al cache y al service', async () => {
+      const dto = { departamento: 'VALLE', naturaleza: 'OFICIAL' as const };
       const mockResponse = [{ tipo_colegio: 'OFICIAL', data: [] }];
+      mockCacheService.remember.mockResolvedValue(mockResponse);
 
-      mockCacheService.remember.mockImplementation(async (_tipo, _params, fn) => fn());
-      mockIcfesService.comparacionColegios.mockResolvedValue(mockResponse);
-
-      const result = await controller.comparacionColegios();
+      const result = await controller.comparacionColegios(dto);
 
       expect(result).toEqual(mockResponse);
-      expect(mockIcfesService.comparacionColegios).toHaveBeenCalled();
+      // naturaleza NO debe aparecer en la clave de cache
+      expect(mockCacheService.remember).toHaveBeenCalledWith('comparacion_colegios', { departamento: 'VALLE' }, expect.any(Function));
+    });
+
+    it('debería ejecutar la función del servicio al no haber cache', async () => {
+      const mockResponse = [{ tipo_colegio: 'OFICIAL', data: [] }];
+      mockCacheService.remember.mockImplementation(async (_k, _p, fn) => fn());
+      mockIcfesService.comparacionColegios.mockResolvedValue(mockResponse);
+
+      const result = await controller.comparacionColegios({});
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.comparacionColegios).toHaveBeenCalledWith({});
     });
   });
 
@@ -588,6 +602,84 @@ describe('IcfesController', () => {
       await controller.desempenoPorEducacionPadres('2022', 'BOLIVAR');
 
       expect(mockIcfesService.desempenoPorEducacionPadres).toHaveBeenCalledWith(2022, 'BOLIVAR');
+    });
+  });
+
+  // ─── participacionPorAno ──────────────────────────────────────────────────
+
+  describe('participacionPorAno', () => {
+    it('debería retornar la participación por año sin segmentación', async () => {
+      const mockResponse = [
+        { ano: 2018, total_estudiantes: 500000 },
+        { ano: 2019, total_estudiantes: 520000 },
+      ];
+      mockCacheService.remember.mockResolvedValue(mockResponse);
+
+      const result = await controller.participacionPorAno({});
+
+      expect(result).toEqual(mockResponse);
+      expect(mockCacheService.remember).toHaveBeenCalledWith('participacion_por_ano', {}, expect.any(Function));
+    });
+
+    it('debería separar segmentar del dto al llamar al service', async () => {
+      const dto = { segmentar: 'genero' as const, departamento: 'VALLE' };
+      const mockResponse = [
+        { ano: 2018, total_estudiantes: 250000, segmento: 'M' },
+        { ano: 2018, total_estudiantes: 260000, segmento: 'F' },
+      ];
+      mockCacheService.remember.mockImplementation(async (_k, _p, fn) => fn());
+      mockIcfesService.participacionPorAno.mockResolvedValue(mockResponse);
+
+      const result = await controller.participacionPorAno(dto);
+
+      expect(result).toEqual(mockResponse);
+      // segmentar se extrae del dto antes de pasar al service
+      expect(mockIcfesService.participacionPorAno).toHaveBeenCalledWith({ departamento: 'VALLE' }, 'genero');
+    });
+
+    it('debería funcionar con segmentación por zona', async () => {
+      const dto = { segmentar: 'zona' as const };
+      const mockResponse = [
+        { ano: 2018, total_estudiantes: 400000, segmento: 'URBANO' },
+        { ano: 2018, total_estudiantes: 100000, segmento: 'RURAL' },
+      ];
+      mockCacheService.remember.mockImplementation(async (_k, _p, fn) => fn());
+      mockIcfesService.participacionPorAno.mockResolvedValue(mockResponse);
+
+      const result = await controller.participacionPorAno(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.participacionPorAno).toHaveBeenCalledWith({}, 'zona');
+    });
+  });
+
+  // ─── distribucionPuntajeDepartamento ─────────────────────────────────────
+
+  describe('distribucionPuntajeDepartamento', () => {
+    it('debería retornar la distribución de puntajes del departamento', async () => {
+      const dto = { departamento: 'ANTIOQUIA' };
+      const mockResponse = [
+        { categoria: 'BAJO', total: 200 },
+        { categoria: 'MEDIO', total: 500 },
+      ];
+      mockCacheService.remember.mockResolvedValue(mockResponse);
+
+      const result = await controller.distribucionPuntajeDepartamento(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockCacheService.remember).toHaveBeenCalledWith('distribucion_puntaje_departamento', { dto }, expect.any(Function));
+    });
+
+    it('debería ejecutar el servicio al no haber cache', async () => {
+      const dto = { departamento: 'ANTIOQUIA' };
+      const mockResponse = [{ categoria: 'BAJO', total: 200 }];
+      mockCacheService.remember.mockImplementation(async (_k, _p, fn) => fn());
+      mockIcfesService.distribucionPuntajeGlobalPorDepartamento.mockResolvedValue(mockResponse);
+
+      const result = await controller.distribucionPuntajeDepartamento(dto);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockIcfesService.distribucionPuntajeGlobalPorDepartamento).toHaveBeenCalledWith('ANTIOQUIA');
     });
   });
 });

@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Resultado } from './schema/icfes.schema';
-import { Model, PipelineStage } from 'mongoose';
+import { Model } from 'mongoose';
 import { PromedioAnualDto } from './dto/promedioAnualDto';
 import { CacheService } from '../cache/cache.service';
+import { EvolucionFiltrosDto } from './dto/Evolucionfiltrosdto';
+import { DistribucionPorAnoDto } from './dto/DistribucionPoranoDto';
 
 @Injectable()
 export class IcfesService {
@@ -12,6 +14,34 @@ export class IcfesService {
     private readonly resultadoModel: Model<Resultado>,
     private readonly cacheService: CacheService,
   ) {}
+
+  private buildFiltrosMatch(filtros: EvolucionFiltrosDto | DistribucionPorAnoDto): Record<string, unknown> {
+    const match: Record<string, unknown> = {};
+
+    if (filtros.departamento) {
+      match['ESTU_DEPTO_RESIDE'] = filtros.departamento.toUpperCase();
+    }
+    if (filtros.genero) {
+      match['ESTU_GENERO'] = filtros.genero;
+    }
+    if (filtros.zona) {
+      match['COLE_AREA_UBICACION'] = filtros.zona.toUpperCase();
+    }
+    if (filtros.naturaleza) {
+      match['COLE_NATURALEZA'] = filtros.naturaleza.toUpperCase();
+    }
+
+    const desde = filtros.anoDesde;
+    const hasta = filtros.anoHasta;
+    if (desde || hasta) {
+      const rango: Record<string, number> = {};
+      if (desde) rango['$gte'] = Number(desde);
+      if (hasta) rango['$lte'] = Number(hasta);
+      match['ANIO_EXAMEN'] = rango;
+    }
+
+    return match;
+  }
 
   async distribucionGeneroPorAnio() {
     try {
@@ -158,13 +188,17 @@ export class IcfesService {
     }
   }
 
-  async comparacionColegios() {
+  async comparacionColegios(filtros: EvolucionFiltrosDto = {}) {
     try {
+      const { naturaleza, ...restoFiltros } = filtros;
+      const matchBase = this.buildFiltrosMatch(restoFiltros);
+
       return this.resultadoModel.aggregate([
         {
           $match: {
             COLE_NATURALEZA: { $in: ['OFICIAL', 'NO OFICIAL'] },
             PUNT_GLOBAL: { $ne: null },
+            ...matchBase,
           },
         },
         {
@@ -174,6 +208,7 @@ export class IcfesService {
               anio: '$ANIO_EXAMEN',
             },
             promedio: { $avg: '$PUNT_GLOBAL' },
+            total_estudiantes: { $sum: 1 },
           },
         },
         {
@@ -182,7 +217,11 @@ export class IcfesService {
             tipo: '$_id.tipo',
             key: { $toString: '$_id.anio' },
             value: { $round: ['$promedio', 1] },
+            total_estudiantes: 1,
           },
+        },
+        {
+          $sort: { key: 1 },
         },
         {
           $group: {
@@ -191,6 +230,7 @@ export class IcfesService {
               $push: {
                 key: '$key',
                 value: '$value',
+                total_estudiantes: '$total_estudiantes',
               },
             },
           },
@@ -204,7 +244,7 @@ export class IcfesService {
         },
       ]);
     } catch (error) {
-      throw new InternalServerErrorException(error);
+      throw new InternalServerErrorException('Error al comparar colegios');
     }
   }
 
@@ -312,8 +352,6 @@ export class IcfesService {
       },
     ]);
   }
-
-  // service.ts
 
   async promedioPorEdad(filters?: { anio?: number; departamento?: string }) {
     const match: any = {};
@@ -440,33 +478,82 @@ export class IcfesService {
 
     return res;
   }
-  async promedioPorAno() {
-    return await this.resultadoModel.aggregate([
-      {
-        $match: {
-          PUNT_GLOBAL: { $ne: null },
-          ANIO_EXAMEN: { $ne: null },
+
+  async promedioPorAno(filtros: EvolucionFiltrosDto = {}) {
+    try {
+      const matchBase = this.buildFiltrosMatch(filtros);
+
+      return await this.resultadoModel.aggregate([
+        {
+          $match: {
+            PUNT_GLOBAL: { $ne: null },
+            ANIO_EXAMEN: { $ne: null },
+            ...matchBase,
+          },
         },
-      },
-      {
-        $group: {
-          _id: '$ANIO_EXAMEN',
-          promedio: { $avg: '$PUNT_GLOBAL' },
-          total_estudiantes: { $sum: 1 },
+        {
+          $group: {
+            _id: '$ANIO_EXAMEN',
+            promedio: { $avg: '$PUNT_GLOBAL' },
+            total_estudiantes: { $sum: 1 },
+          },
         },
-      },
-      {
-        $sort: { _id: 1 },
-      },
-      {
-        $project: {
-          _id: 0,
-          ano: '$_id',
-          promedio: { $round: ['$promedio', 2] },
-          total_estudiantes: 1,
+        {
+          $sort: { _id: 1 },
         },
-      },
-    ]);
+        {
+          $project: {
+            _id: 0,
+            ano: '$_id',
+            promedio: { $round: ['$promedio', 2] },
+            total_estudiantes: 1,
+          },
+        },
+      ]);
+    } catch (error) {
+      throw new InternalServerErrorException('Error al calcular el promedio por año');
+    }
+  }
+
+  async promedioPorMateriaPorAno(filtros: EvolucionFiltrosDto = {}) {
+    try {
+      const matchBase = this.buildFiltrosMatch(filtros);
+
+      return await this.resultadoModel.aggregate([
+        {
+          $match: {
+            ANIO_EXAMEN: { $ne: null },
+            ...matchBase,
+          },
+        },
+        {
+          $group: {
+            _id: '$ANIO_EXAMEN',
+            lectCritica: { $avg: '$PUNT_LECTURA_CRITICA' },
+            matematicas: { $avg: '$PUNT_MATEMATICAS' },
+            sociales: { $avg: '$PUNT_SOCIALES_CIUDADANAS' },
+            naturales: { $avg: '$PUNT_C_NATURALES' },
+            ingles: { $avg: '$PUNT_INGLES' },
+          },
+        },
+        {
+          $sort: { _id: 1 },
+        },
+        {
+          $project: {
+            _id: 0,
+            ano: '$_id',
+            'Lectura Crítica': { $round: ['$lectCritica', 2] },
+            Matemáticas: { $round: ['$matematicas', 2] },
+            Sociales: { $round: ['$sociales', 2] },
+            Naturales: { $round: ['$naturales', 2] },
+            Inglés: { $round: ['$ingles', 2] },
+          },
+        },
+      ]);
+    } catch (error) {
+      throw new InternalServerErrorException('Error al calcular el promedio de materias por año');
+    }
   }
 
   async topDepartamentos(limit: number = 5) {
@@ -560,6 +647,67 @@ export class IcfesService {
         },
       },
     ]);
+  }
+
+  async distribucionPuntajesPorAno(filtros: DistribucionPorAnoDto = {}) {
+    try {
+      const matchBase = this.buildFiltrosMatch(filtros);
+
+      const rangos = [
+        { label: '0-100', min: 0, max: 100 },
+        { label: '100-200', min: 100, max: 200 },
+        { label: '200-300', min: 200, max: 300 },
+        { label: '300-400', min: 300, max: 400 },
+        { label: '400-500', min: 400, max: 500 },
+      ];
+
+      return await this.resultadoModel.aggregate([
+        {
+          $match: {
+            PUNT_GLOBAL: { $ne: null, $gte: 0 },
+            ANIO_EXAMEN: { $ne: null },
+            ...matchBase,
+          },
+        },
+        {
+          $addFields: {
+            rango: {
+              $switch: {
+                branches: rangos.map((r) => ({
+                  case: {
+                    $and: [{ $gte: ['$PUNT_GLOBAL', r.min] }, { $lt: ['$PUNT_GLOBAL', r.max] }],
+                  },
+                  then: r.label,
+                })),
+                default: '500+',
+              },
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              ano: '$ANIO_EXAMEN',
+              rango: '$rango',
+            },
+            cantidad: { $sum: 1 },
+          },
+        },
+        {
+          $sort: { '_id.ano': 1 },
+        },
+        {
+          $project: {
+            _id: 0,
+            ano: '$_id.ano',
+            rango: '$_id.rango',
+            cantidad: 1,
+          },
+        },
+      ]);
+    } catch (error) {
+      throw new InternalServerErrorException('Error al calcular la distribución de puntajes por año');
+    }
   }
 
   async getTopMunicipiosPorDepartamento(departamento: string, limit: number) {
@@ -1183,5 +1331,50 @@ export class IcfesService {
       internet: internet[0] ?? { promedio: 0, total: 0 },
       computador: computador[0] ?? { promedio: 0, total: 0 },
     };
+  }
+
+  async participacionPorAno(filtros: EvolucionFiltrosDto = {}, segmentar?: 'genero' | 'zona') {
+    try {
+      const matchBase = this.buildFiltrosMatch(filtros);
+
+      const campoSegmento = segmentar === 'genero' ? '$ESTU_GENERO' : segmentar === 'zona' ? '$COLE_AREA_UBICACION' : null;
+
+      const groupId = campoSegmento ? { ano: '$ANIO_EXAMEN', segmento: campoSegmento } : { ano: '$ANIO_EXAMEN' };
+
+      const matchSegmento: Record<string, unknown> = {};
+      if (campoSegmento) {
+        const campoSinDolar = campoSegmento.slice(1);
+        matchSegmento[campoSinDolar] = { $ne: null };
+      }
+
+      return await this.resultadoModel.aggregate([
+        {
+          $match: {
+            ANIO_EXAMEN: { $ne: null },
+            ...matchSegmento,
+            ...matchBase,
+          },
+        },
+        {
+          $group: {
+            _id: groupId,
+            total_estudiantes: { $sum: 1 },
+          },
+        },
+        {
+          $sort: { '_id.ano': 1 },
+        },
+        {
+          $project: {
+            _id: 0,
+            ano: '$_id.ano',
+            total_estudiantes: 1,
+            ...(campoSegmento ? { segmento: '$_id.segmento' } : {}),
+          },
+        },
+      ]);
+    } catch (error) {
+      throw new InternalServerErrorException('Error al calcular la participación por año');
+    }
   }
 }

@@ -115,11 +115,44 @@ export class IcfesController {
   }
 
   @Get('promedio-edad')
-  @ApiOperation({ summary: 'Promedio agrupado por edad', description: 'Devuelve el promedio de puntaje agrupado por edad' })
-  promedioEdades() {
-    return this.icfesService.promedioPorEdad();
-  }
+  @ApiOperation({
+    summary: 'Promedio de puntaje por grupos de edad',
+    description: 'Devuelve el promedio del puntaje global agrupado por rangos de edad',
+  })
+  @ApiQuery({
+    name: 'anio',
+    required: false,
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'departamento',
+    required: false,
+    type: String,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Promedio por edad calculado correctamente',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error al calcular promedio por edad',
+  })
+  promedioEdades(@Query('anio') anio?: string, @Query('departamento') departamento?: string) {
+    const parsedAnio = anio ? Number(anio) : undefined;
 
+    return this.cacheService.remember(
+      'promedio_edad',
+      {
+        anio: parsedAnio,
+        departamento,
+      },
+      () =>
+        this.icfesService.promedioPorEdad({
+          anio: parsedAnio,
+          departamento,
+        }),
+    );
+  }
   @Get('promedio-por-ano')
   @ApiOperation({ summary: 'Promedio agrupado por año', description: 'Devuelve el promedio global agrupado por año' })
   promedioAnos() {

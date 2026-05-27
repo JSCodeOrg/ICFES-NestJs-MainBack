@@ -313,35 +313,133 @@ export class IcfesService {
     ]);
   }
 
-  async promedioPorEdad() {
-    return this.resultadoModel.aggregate([
+  // service.ts
+
+  async promedioPorEdad(filters?: { anio?: number; departamento?: string }) {
+    const match: any = {};
+
+    if (filters?.anio) {
+      match.PERIODO = filters.anio;
+    }
+
+    if (filters?.departamento) {
+      match.DEPARTAMENTO_ESTABLECIMIENTO = filters.departamento;
+    }
+
+    const res = await this.resultadoModel.aggregate([
       {
         $match: {
+          ...match,
           EDAD: { $ne: null },
           PUNT_GLOBAL: { $ne: null },
         },
       },
+
       {
-        $group: {
-          _id: '$EDAD',
-          promedio: { $avg: '$PUNT_GLOBAL' },
-          total_estudiantes: { $sum: 1 },
+        $addFields: {
+          grupoEdad: {
+            $switch: {
+              branches: [
+                {
+                  case: {
+                    $and: [{ $gte: ['$EDAD', 14] }, { $lte: ['$EDAD', 15] }],
+                  },
+                  then: '14-15',
+                },
+                {
+                  case: {
+                    $and: [{ $gte: ['$EDAD', 16] }, { $lte: ['$EDAD', 17] }],
+                  },
+                  then: '16-17',
+                },
+                {
+                  case: {
+                    $and: [{ $gte: ['$EDAD', 18] }, { $lte: ['$EDAD', 19] }],
+                  },
+                  then: '18-19',
+                },
+                {
+                  case: {
+                    $and: [{ $gte: ['$EDAD', 20] }, { $lte: ['$EDAD', 21] }],
+                  },
+                  then: '20-21',
+                },
+                {
+                  case: {
+                    $and: [{ $gte: ['$EDAD', 22] }, { $lte: ['$EDAD', 23] }],
+                  },
+                  then: '22-23',
+                },
+                {
+                  case: {
+                    $and: [{ $gte: ['$EDAD', 24] }, { $lte: ['$EDAD', 25] }],
+                  },
+                  then: '24-25',
+                },
+                {
+                  case: {
+                    $gte: ['$EDAD', 26],
+                  },
+                  then: '26+',
+                },
+              ],
+              default: 'Sin dato',
+            },
+          },
         },
       },
+
       {
-        $sort: { _id: 1 },
+        $group: {
+          _id: '$grupoEdad',
+          promedio: {
+            $avg: '$PUNT_GLOBAL',
+          },
+          total: {
+            $sum: 1,
+          },
+        },
       },
+
+      {
+        $addFields: {
+          orden: {
+            $switch: {
+              branches: [
+                { case: { $eq: ['$_id', '14-15'] }, then: 1 },
+                { case: { $eq: ['$_id', '16-17'] }, then: 2 },
+                { case: { $eq: ['$_id', '18-19'] }, then: 3 },
+                { case: { $eq: ['$_id', '20-21'] }, then: 4 },
+                { case: { $eq: ['$_id', '22-23'] }, then: 5 },
+                { case: { $eq: ['$_id', '24-25'] }, then: 6 },
+                { case: { $eq: ['$_id', '26+'] }, then: 7 },
+              ],
+              default: 99,
+            },
+          },
+        },
+      },
+
+      {
+        $sort: {
+          orden: 1,
+        },
+      },
+
       {
         $project: {
           _id: 0,
           edad: '$_id',
-          promedio: { $round: ['$promedio', 2] },
-          total_estudiantes: 1,
+          promedio: {
+            $round: ['$promedio', 2],
+          },
+          total: 1,
         },
       },
     ]);
-  }
 
+    return res;
+  }
   async promedioPorAno() {
     return await this.resultadoModel.aggregate([
       {

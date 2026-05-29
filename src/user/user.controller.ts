@@ -43,6 +43,12 @@ export class UserController {
     return { message: 'Registro completado. Bienvenido.' };
   }
 
+  @Post('resend-verification')
+  @Public()
+  resendVerificationCode(@Body('email') email: string) {
+    return this.userService.resendVerificationCode(email);
+  }
+
   @Get('admin')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')

@@ -96,6 +96,15 @@ export class UserService {
     return { access_token, message: 'Correo verificado. Usuario registrado correctamente.' };
   }
 
+  async resendVerificationCode(email: string) {
+    const existing = await this.verificationCodeModel.findOne({ email });
+    if (!existing) throw new BadRequestException('No hay un registro pendiente para este correo.');
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    await this.verificationCodeModel.updateOne({ email }, { code });
+    await this.mailService.resendVerificationCode(email, code);
+    return { message: 'Código reenviado correctamente.' };
+  }
+
   async getAllUsers(page: number = 1, limit: number = 10) {
     try {
       const skip = (page - 1) * limit;

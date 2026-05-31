@@ -87,19 +87,17 @@ export class InstitucionService {
       COLE_DEPTO_UBICACION: departamento.toUpperCase(),
     };
 
-    // Municipio opcional
     if (municipio) {
       filtro.COLE_MCPIO_UBICACION = municipio.toUpperCase();
     }
 
-    // Naturaleza opcional
     if (naturaleza) {
       filtro.COLE_NATURALEZA = naturaleza.toUpperCase();
     }
 
     const [resultados, total] = await Promise.all([
       this.institucionModel.aggregate([
-        // Ranking nacional real
+ 
         {
           $setWindowFields: {
             sortBy: {
@@ -114,7 +112,6 @@ export class InstitucionService {
           },
         },
 
-        // Filtros
         {
           $match: filtro,
         },
@@ -181,7 +178,7 @@ export class InstitucionService {
 
   async obtenerInstitucion(codigoDane: string) {
     const [institucion] = await this.institucionModel.aggregate([
-      // Ranking nacional
+
       {
         $setWindowFields: {
           sortBy: {
@@ -196,14 +193,12 @@ export class InstitucionService {
         },
       },
 
-      // Buscar institución
       {
         $match: {
           COLE_COD_DANE_ESTABLECIMIENTO: Number(codigoDane),
         },
       },
 
-      // Redondeos opcionales
       {
         $addFields: {
           promedio_global: {
@@ -271,5 +266,42 @@ export class InstitucionService {
         total_instituciones: 0,
       }
     );
+  }
+
+  async buscarInstituciones(query: string, limit = 10) {
+    const esCodigo = /^\d+$/.test(query.trim());
+
+    const projectStage = {
+      _id: 0,
+      nombre_institucion: '$COLE_NOMBRE_ESTABLECIMIENTO',
+      departamento: '$COLE_DEPTO_UBICACION',
+      municipio: '$COLE_MCPIO_UBICACION',
+      sector: '$COLE_NATURALEZA',
+      promedio_global: { $round: ['$promedio_global', 2] },
+      codigo_dane: '$COLE_COD_DANE_ESTABLECIMIENTO',
+    };
+
+    if (esCodigo) {
+      return this.institucionModel.aggregate([
+        { $match: { COLE_COD_DANE_ESTABLECIMIENTO: Number(query.trim()) } },
+        { $project: projectStage },
+        { $limit: limit },
+      ]);
+    }
+
+    const porTexto = await this.institucionModel.aggregate([
+      { $match: { $text: { $search: query } } },
+      { $sort: { score: { $meta: 'textScore' } } },
+      { $project: projectStage },
+      { $limit: limit },
+    ]);
+
+    if (porTexto.length > 0) return porTexto;
+
+    return this.institucionModel.aggregate([
+      { $match: { COLE_NOMBRE_ESTABLECIMIENTO: new RegExp(query.trim(), 'i') } },
+      { $project: projectStage },
+      { $limit: limit },
+    ]);
   }
 }

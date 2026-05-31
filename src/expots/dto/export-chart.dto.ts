@@ -1,4 +1,4 @@
-export type KV      = { key: string; value: number };
+export type KV      = { key: string; value: number | null };
 export type KVs     = { key: string; values: number[] };
 export type KVLabel = { label: string; value: number };
 export type Serie   = { label: string; color: string; data: KV[] };
@@ -71,6 +71,16 @@ export type HeatmapPayload = {
   }[];
 };
 
+export type MateriasBarPayload = {
+  type: 'materias_bar';
+  label: string;
+  data: {
+    materia: string;
+    promedio: number;
+    color: string;
+  }[];
+};
+
 export type ExportChartDto =
   | SinglePayload
   | MultiPayload
@@ -79,7 +89,8 @@ export type ExportChartDto =
   | MixedPayload
   | HistogramPayload
   | StackedPayload
-  | HeatmapPayload;
+  | HeatmapPayload
+  | MateriasBarPayload;
 
 export type ExportPdfDto = {
   filename?: string;

@@ -96,6 +96,22 @@ export class InstitucionController {
     return this.institucionService.rankingDepartamento(departamento, municipio, naturaleza, Number(page), Number(limit));
   }
 
+  @Get('buscar')
+  @ApiOperation({
+    summary: 'Buscar instituciones',
+    description: 'Busca instituciones por nombre o código DANE',
+  })
+  @ApiQuery({ name: 'q', required: true, example: 'Liceo' })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @ApiResponse({ status: 200, description: 'Resultados de búsqueda' })
+  buscarInstituciones(
+    @Query('q') q: string,
+    @Query('limit') limit = 10,
+  ) {
+    if (!q || q.trim().length < 2) return [];
+    return this.institucionService.buscarInstituciones(q, Number(limit));
+  }
+
   @Get('municipios/:departamento')
   @ApiOperation({
     summary: 'Municipios por departamento',

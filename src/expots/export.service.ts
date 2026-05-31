@@ -122,6 +122,7 @@ export class ExportService {
                   fill:        false,
                   tension:     0.3,
                   pointRadius: 3,
+                  spanGaps: true, 
                 }),
               };
             }),
@@ -181,6 +182,31 @@ export class ExportService {
           },
         } as ChartConfiguration;
       }
+
+      case 'materias_bar': {
+        return {
+          type: 'bar',
+          data: {
+            labels: dto.data.map(d => d.materia),
+            datasets: [{
+              label:           dto.label,
+              data:            dto.data.map(d => d.promedio),
+              backgroundColor: dto.data.map(d => hex(d.color, 'b3')),
+              borderColor:     dto.data.map(d => d.color),
+              borderWidth:     1.5,
+              borderRadius:    4,
+            }],
+          },
+          options: {
+            indexAxis:  'y',
+            responsive: false,
+            plugins: { legend: baseLegend(false) },
+            scales: baseScales({ horizontal: true }),
+          },
+        } as ChartConfiguration;
+      }
+
+
 
       case 'mixed': {
         const barC  = colorAt(0, dto.barColor);

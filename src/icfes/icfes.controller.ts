@@ -375,4 +375,32 @@ export class IcfesController {
     const { segmentar, ...filtros } = dto;
     return this.cacheService.remember('participacion_por_ano', dto, () => this.icfesService.participacionPorAno(filtros, segmentar));
   }
+
+
+  @Get('evolucion-municipios-departamento')
+  @ApiOperation({
+    summary: 'Evolución de municipios (slope chart)',
+    description:
+      'Devuelve el promedio de 2014 y 2022 por municipio de un departamento, ' +
+      'junto con el delta (variación). Incluye solo municipios con datos en ambos años.',
+  })
+  @ApiQuery({ name: 'departamento', required: true, example: 'VALLE' })
+  @ApiResponse({ status: 200, description: 'Evolución calculada correctamente' })
+  @ApiResponse({ status: 500, description: 'Error al calcular la evolución de municipios' })
+  evolucionMunicipiosDepartamento(@Query() dto: Departamento) {
+    return this.cacheService.remember(
+      'evolucion_municipios_departamento',
+      { dto },
+      () => this.icfesService.getEvolucionMunicipiosDepartamento(dto.departamento),
+    );
+  }
+
+  @Get('evolucion-municipios-por-anio')
+  getEvolucionMunicipiosPorAnio(@Query('departamento') departamento: string) {
+    return this.cacheService.remember(
+      'evolucion_municipios_por_anio',
+      { departamento },
+      () => this.icfesService.getEvolucionMunicipiosPorAnio(departamento),
+    );
+  }
 }

@@ -767,7 +767,7 @@ export class IcfesService {
           },
         },
         {
-          $sort: { promedio: 1 }, // 🔴 CLAVE: ascendente = bottom
+          $sort: { promedio: 1 },
         },
         {
           $limit: limit,
@@ -1146,7 +1146,7 @@ export class IcfesService {
           ...(departamento && { COLE_DEPTO_UBICACION: departamento.toUpperCase() }),
         },
       },
-      // 2. NORMALIZACIÓN CRÍTICA
+
       {
         $addFields: {
           estrato_normalizado: {
@@ -1155,7 +1155,7 @@ export class IcfesService {
                 {
                   $in: ['$FAMI_ESTRATOVIVIENDA', [null, '', '0', 0, 'NULL', 'null', undefined]],
                 },
-                '1', // fallback
+                '1', 
                 '$FAMI_ESTRATOVIVIENDA',
               ],
             },
@@ -1163,7 +1163,6 @@ export class IcfesService {
         },
       },
 
-      // 3. Agrupación
       {
         $group: {
           _id: '$estrato_normalizado',
@@ -1172,7 +1171,6 @@ export class IcfesService {
         },
       },
 
-      // 4. Orden (como string numérico correcto)
       {
         $addFields: {
           estrato_num: { $toInt: '$_id' },
@@ -1185,7 +1183,6 @@ export class IcfesService {
         },
       },
 
-      // 5. Formato final
       {
         $project: {
           _id: 0,
@@ -1377,4 +1374,213 @@ export class IcfesService {
       throw new InternalServerErrorException('Error al calcular la participación por año');
     }
   }
+
+
+  async getEvolucionMunicipiosDepartamento(departamento: string) {
+    try {
+      const result = await this.resultadoModel.aggregate([
+        {
+          $match: {
+            ESTU_DEPTO_RESIDE: departamento.toUpperCase(),
+            PUNT_GLOBAL: { $ne: null },
+            ESTU_MCPIO_RESIDE: { $ne: null },
+            ANIO_EXAMEN: { $in: [2014, 2022] },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              municipio: '$ESTU_MCPIO_RESIDE',
+              anio: '$ANIO_EXAMEN',
+            },
+            promedio: { $avg: '$PUNT_GLOBAL' },
+            total: { $sum: 1 },
+          },
+        },
+        {
+          $group: {
+            _id: '$_id.municipio',
+            datos: {
+              $push: {
+                anio: '$_id.anio',
+                promedio: { $round: ['$promedio', 2] },
+                total: '$total',
+              },
+            },
+          },
+        },
+        {
+          $match: {
+            $expr: { $eq: [{ $size: '$datos' }, 2] },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            municipio: '$_id',
+            inicio: {
+              $arrayElemAt: [
+                {
+                  $filter: {
+                    input: '$datos',
+                    as: 'd',
+                    cond: { $eq: ['$$d.anio', 2014] },
+                  },
+                },
+                0,
+              ],
+            },
+            fin: {
+              $arrayElemAt: [
+                {
+                  $filter: {
+                    input: '$datos',
+                    as: 'd',
+                    cond: { $eq: ['$$d.anio', 2022] },
+                  },
+                },
+                0,
+              ],
+            },
+          },
+        },
+        {
+          $addFields: {
+            delta: {
+              $round: [{ $subtract: ['$fin.promedio', '$inicio.promedio'] }, 2],
+            },
+          },
+        },
+        {
+          $sort: { delta: -1 },
+        },
+      ]);
+
+      return result;
+    } catch (error) {
+      throw new InternalServerErrorException('Error al obtener evolución de municipios');
+    }
+  }
+
+  
+  async getEvolucionMunicipiosPorAnio(departamento: string) {
+  try {
+    const result = await this.resultadoModel.aggregate([
+      {
+        $match: {
+          ESTU_DEPTO_RESIDE: departamento.toUpperCase(),
+          PUNT_GLOBAL: { $ne: null },
+          ESTU_MCPIO_RESIDE: { $ne: null },
+          ANIO_EXAMEN: { $in: [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022] },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            municipio: '$ESTU_MCPIO_RESIDE',
+            anio: '$ANIO_EXAMEN',
+          },
+          promedio: { $avg: '$PUNT_GLOBAL' },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id.municipio',
+          serie: {
+            $push: {
+              anio: '$_id.anio',
+              promedio: { $round: ['$promedio', 2] },
+            },
+          },
+        },
+      },
+
+      {
+        $match: {
+          $expr: {
+            $and: [
+              { $gt: [{ $size: '$serie' }, 0] },
+              {
+                $in: [
+                  2014,
+                  {
+                    $map: {
+                      input: '$serie',
+                      as: 's',
+                      in: '$$s.anio',
+                    },
+                  },
+                ],
+              },
+              {
+                $in: [
+                  2022,
+                  {
+                    $map: {
+                      input: '$serie',
+                      as: 's',
+                      in: '$$s.anio',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      {
+        $addFields: {
+          serie: { $sortArray: { input: '$serie', sortBy: { anio: 1 } } },
+          inicio: {
+            $arrayElemAt: [
+              {
+                $filter: {
+                  input: '$serie',
+                  as: 'd',
+                  cond: { $eq: ['$$d.anio', 2014] },
+                },
+              },
+              0,
+            ],
+          },
+          fin: {
+            $arrayElemAt: [
+              {
+                $filter: {
+                  input: '$serie',
+                  as: 'd',
+                  cond: { $eq: ['$$d.anio', 2022] },
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $addFields: {
+          delta: {
+            $round: [{ $subtract: ['$fin.promedio', '$inicio.promedio'] }, 2],
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          municipio: '$_id',
+          serie: 1,
+          inicio: 1,
+          fin: 1,
+          delta: 1,
+        },
+      },
+      { $sort: { delta: -1 } },
+    ]);
+
+    return result;
+  } catch (error) {
+    throw new InternalServerErrorException('Error al obtener evolución de municipios por año');
+  }
+}
+
 }

@@ -4,6 +4,7 @@ import type { Response, Request } from 'express';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { LoginDto } from './dto/loginDto';
 import { Public } from './jwt.decorator';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -68,4 +69,29 @@ export class AuthController {
       path: '/',
     });
   }
+
+@Get('google')
+@Public()
+@UseGuards(GoogleAuthGuard)
+async googleAuth() {
+  
+}
+
+@Get('google/callback')
+@Public()
+@UseGuards(GoogleAuthGuard)
+async googleCallback(@Req() req: Request | any, @Res() res: Response) {
+  const { access_token } = await this.authService.loginWithGoogle(req.user);
+
+  res.cookie('token', access_token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 1000 * 60 * 60,
+    path: '/',
+  });
+
+  res.redirect(`${process.env.FRONTEND_URL}/home`);
+}
+
 }

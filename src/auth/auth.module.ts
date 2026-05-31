@@ -9,6 +9,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtAuthGuard } from './jwtauthguard';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
   providers: [
     AuthService,
     JwtStrategy,
+    GoogleStrategy,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

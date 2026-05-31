@@ -8,6 +8,7 @@ import { UserModule } from './user/user.module';
 import { IcfesModule } from './icfes/icfes.module';
 import { InstitucionModule } from './institucion/institucion.module';
 import { RoleRequestModule } from './rolRequestUser/role-request.module';
+import { ExportModule } from './expots/export.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RoleRequestModule } from './rolRequestUser/role-request.module';
     IcfesModule,
     InstitucionModule,
     RoleRequestModule,
+    ExportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

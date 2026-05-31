@@ -14,7 +14,7 @@ export class User {
   email: string;
 
   @Prop({
-    required: true,
+    required: false,
   })
   password: string;
 

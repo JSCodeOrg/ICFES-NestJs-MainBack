@@ -58,6 +58,41 @@ export class AuthService {
     };
   }
 
+  async loginWithGoogle(googleUser: {
+    email: string;
+    firstname: string;
+    lastname: string;
+    picture?: string;
+  }) {
+    let user = await this.userModel.findOne({ email: googleUser.email });
+
+    if (!user) {
+      user = await this.userModel.create({
+        email: googleUser.email,
+        firstname: googleUser.firstname,
+        lastname: googleUser.lastname,
+        estado: true,
+        role: 'consultor',
+      });
+    }
+
+    if (!user.estado) {
+      throw new UnauthorizedException('Usuario inactivo');
+    }
+
+    await this.userModel.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+
+    const payload = {
+      email: user.email,
+      id: user._id,
+      role: user.role,
+    };
+
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
+  }
+
   async getMe(token: string) {
     try {
       const payload = this.jwtService.verify(token);
